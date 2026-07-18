@@ -1,0 +1,7 @@
+count_point_id,year,road_name,estimation_method,estimation_method_detailed,all_motor_vehicles,cars_and_taxis,LGVs,all_HGVs,link_length_km
+17705,2024,A6177,Counted,Manual count,49615,39848,7275,2270,1.6
+47441,2024,A650,Estimated,Estimated using AADF from previous year on this link,38360,30008,5662,2146,2.1
+47907,2024,A6177,Estimated,Estimated using AADF from previous year on this link,7877,6912,855,93,1.1
+57940,2024,A658,Estimated,Estimated using AADF from previous year on this link,21781,18966,2268,346,1.8
+58268,2024,A6181,Estimated,Estimated using AADF from previous year on this link,14215,12513,1238,107,0.4
+73112,2024,M606,Estimated,Estimated using AADF from previous year on this link,63273,45772,12208,5127,2.5

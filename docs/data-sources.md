@@ -23,3 +23,25 @@ Licence: Open Government Licence v3.0.
 
 Every downloaded file will receive a manifest containing source URL, retrieval
 time, checksum, publication status, reporting period, and licence.
+
+## DfT Major Roads Database
+
+The 2024 Major Roads Database supplies year-aligned major-road link geometry.
+Each link carries a `CP_Number` that joins directly to DfT traffic statistics.
+The source is published as a zipped shapefile under the Open Government
+Licence. It does not represent minor roads.
+
+## DfT Annual Average Daily Flow
+
+AADF is the estimated number of vehicles passing a count point on an average
+day. The pipeline preserves `estimation_method` and
+`estimation_method_detailed`; counted and estimated values are never presented
+as equivalent quality. DfT cautions that individual-link estimates are less
+robust than regional or national statistics.
+
+## OS Open Roads
+
+OS Open Roads is the planned all-roads link-and-node geometry source. It is
+available under the Open Government Licence and updated every six months. It
+does not itself solve minor-road traffic exposure, so it is not yet used for
+published rates.

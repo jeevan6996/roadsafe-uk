@@ -4,9 +4,9 @@ Exposure-aware road safety screening for Great Britain, designed to show where
 historical evidence, professional statistical methods, and calibrated machine
 learning agree or disagree.
 
-> **Current release:** data-foundation preview. The application displays
-> observed 2024 collision evidence from a reproducible West Yorkshire pilot. It does
-> not yet publish risk predictions or intervention recommendations.
+> **Current release:** network and exposure preview. The application displays
+> observed 2024 collision evidence and DfT traffic exposure for major-road
+> links. It does not publish expected-risk scores or intervention advice.
 
 ## Why this project
 
@@ -26,9 +26,18 @@ road-network graph models.
 - schema, coordinate, duplicate-key, and severity validation
 - reproducible West Yorkshire pilot extraction to Parquet
 - machine-readable data quality report
-- versioned FastAPI endpoints for metadata, summaries, and collision points
-- React and MapLibre investigation surface
+- collision-to-link matching with distance and ambiguity diagnostics
+- exact DfT count-point to AADF exposure joins with method quality flags
+- segment evidence in Parquet and GeoJSON
+- versioned FastAPI endpoints for collision and major-road evidence
+- React and MapLibre observed/exposure investigation modes
+- future-year and grouped-authority evaluation contract
 - fixture-driven unit and API tests
+
+The full pilot contains 256 major-road links with 2024 AADF. Of 1,791 pilot
+collisions, 330 are accepted within 50 metres, 61 are ambiguous, and 1,400 are
+outside the major-road matching scope. These exclusions are a product feature,
+not missing values to conceal or automatically impute.
 
 ## Quick start
 
@@ -56,6 +65,7 @@ To serve a generated pilot instead of the 12-record test fixture:
 
 ```bash
 ROADSAFE_DATA_PATH=data/processed/pilot-collisions-2024.parquet \
+ROADSAFE_NETWORK_PATH=data/processed/segment-evidence-2024.geojson \
   uvicorn roadsafe.api.app:app --reload
 ```
 
@@ -73,6 +83,25 @@ roadsafe build-pilot \
 
 The command writes a pilot Parquet file and quality report. Raw and processed
 datasets are intentionally excluded from Git.
+
+## Build network and exposure evidence
+
+Download the official 2024 Major Roads Database and AADF CSV from the
+[DfT road traffic downloads](https://roadtraffic.dft.gov.uk/downloads), then
+run:
+
+```bash
+roadsafe build-network \
+  --collisions data/processed/pilot-collisions-2024.parquet \
+  --roads data/raw/MRDB_2024_published.shp \
+  --aadf data/raw/dft_traffic_counts_aadf.csv \
+  --output data/processed \
+  --year 2024
+```
+
+The command writes accepted/rejected matches, segment evidence, serving
+GeoJSON, and a quality report. AADF-derived rates are descriptive and remain
+separate from future expected-frequency models.
 
 ## Documentation
 

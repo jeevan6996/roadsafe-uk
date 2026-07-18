@@ -53,7 +53,9 @@ def read_collisions(path: Path) -> pl.DataFrame:
     if missing:
         raise DataValidationError(f"Missing required columns: {', '.join(sorted(missing))}")
 
-    frame = frame.filter(pl.col("collision_index").is_not_null())
+    frame = frame.filter(pl.col("collision_index").is_not_null()).with_columns(
+        pl.col("collision_index").cast(pl.String)
+    )
 
     duplicate_ids = frame.select(pl.col("collision_index").is_duplicated().sum()).item()
     if duplicate_ids:

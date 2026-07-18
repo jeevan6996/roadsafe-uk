@@ -1,0 +1,15 @@
+{
+  "schema_version": "1.0",
+  "status": "planned-not-run",
+  "unit": "dft-major-road-segment-year",
+  "target": "future_ksi_collision_count",
+  "training_years": [2019, 2020, 2021, 2022],
+  "validation_years": [2023],
+  "test_years": [2024],
+  "geographic_split": "grouped-local-authority-holdout",
+  "feature_cutoff": "end-of-prior-calendar-year",
+  "ranking_metrics": ["precision_at_k", "recall_at_k", "lift_at_k"],
+  "probabilistic_metrics": ["poisson_deviance", "calibration_slope", "calibration_intercept"],
+  "required_subgroups": ["road_class", "urban_rural", "traffic_estimation_method", "local_authority"],
+  "excluded_event_features": ["collision_weather", "collision_light_conditions", "collision_road_surface"]
+}

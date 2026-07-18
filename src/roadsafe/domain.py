@@ -45,3 +45,14 @@ class CollisionSummary(BaseModel):
     fatal: int
     serious: int
     slight: int
+
+
+class NetworkSummary(BaseModel):
+    segments: int
+    segments_with_exposure: int
+    counted_exposure: int
+    estimated_exposure: int
+    matched_collisions: int
+    matched_ksi: int
+    scope: str
+    caveat: str

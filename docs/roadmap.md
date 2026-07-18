@@ -6,11 +6,12 @@
 - observed-evidence API and investigation map
 - explicit source, licence, scope, and responsible-use caveats
 
-## 0.2 Network and exposure
+## 0.2 Network and exposure (current)
 
-- versioned road-segment geometry
-- collision-to-segment matching with uncertainty diagnostics
-- traffic exposure and road-characteristic coverage views
+- completed: year-aligned DfT major-road segment geometry
+- completed: collision matching with distance and ambiguity diagnostics
+- completed: AADF linkage, quality flags, and exposure coverage view
+- next: OS Open Roads geometry and a defensible minor-road exposure strategy
 
 ## 0.3 Statistical screening
 

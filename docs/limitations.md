@@ -12,3 +12,14 @@
 RoadSafe UK will recommend questions for investigation, not physical
 interventions. Any future intervention evidence must come from separately
 reviewed causal or safety-effectiveness research.
+
+## Major-road exposure scope
+
+The current exposure layer covers DfT major-road links only. It must not be used
+to compare major roads with minor roads, because minor-road collisions have no
+equivalent link exposure in this release. AADF values may be counted or
+estimated; their method is retained in every segment record and interface.
+
+Spatial matching also introduces uncertainty near junctions and parallel
+carriageways. Matches outside 50 metres or with near-equal candidates are
+excluded rather than assigned automatically.

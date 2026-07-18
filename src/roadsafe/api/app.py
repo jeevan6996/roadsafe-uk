@@ -1,6 +1,8 @@
+import json
 import os
 from functools import lru_cache
 from pathlib import Path
+from typing import Any, cast
 
 import polars as pl
 from fastapi import FastAPI, Query
@@ -12,12 +14,15 @@ from roadsafe.domain import (
     CollisionSeverity,
     CollisionSummary,
     DataMetadata,
+    NetworkSummary,
 )
 from roadsafe.pipeline import SOURCE_URL
 
 ROOT = Path(__file__).resolve().parents[3]
 FIXTURE_PATH = ROOT / "tests" / "fixtures" / "dft-collisions-west-yorkshire-2024.csv"
 DATA_PATH = Path(os.environ.get("ROADSAFE_DATA_PATH", FIXTURE_PATH))
+NETWORK_FIXTURE_PATH = ROOT / "tests" / "fixtures" / "segment-evidence-west-yorkshire-2024.geojson"
+NETWORK_PATH = Path(os.environ.get("ROADSAFE_NETWORK_PATH", NETWORK_FIXTURE_PATH))
 
 app = FastAPI(
     title="RoadSafe UK API",
@@ -37,6 +42,11 @@ def collision_frame() -> pl.DataFrame:
     if DATA_PATH.suffix == ".parquet":
         return pl.read_parquet(DATA_PATH)
     return pl.read_csv(DATA_PATH)
+
+
+@lru_cache
+def network_features() -> dict[str, Any]:
+    return cast(dict[str, Any], json.loads(NETWORK_PATH.read_text(encoding="utf-8")))
 
 
 def to_point(row: dict[str, object]) -> CollisionPoint:
@@ -101,4 +111,24 @@ def summary() -> CollisionSummary:
         fatal=int((severity == 1).sum()),
         serious=int((severity == 2).sum()),
         slight=int((severity == 3).sum()),
+    )
+
+
+@app.get("/api/v1/segments")
+def segments() -> dict[str, Any]:
+    return network_features()
+
+
+@app.get("/api/v1/network-summary", response_model=NetworkSummary)
+def network_summary() -> NetworkSummary:
+    properties = [feature["properties"] for feature in network_features()["features"]]
+    return NetworkSummary(
+        segments=len(properties),
+        segments_with_exposure=sum(item["all_motor_vehicles"] is not None for item in properties),
+        counted_exposure=sum(item["estimation_method"] == "Counted" for item in properties),
+        estimated_exposure=sum(item["estimation_method"] == "Estimated" for item in properties),
+        matched_collisions=sum(item["collision_count"] for item in properties),
+        matched_ksi=sum(item["ksi_count"] for item in properties),
+        scope="DfT major-road links only",
+        caveat="AADF link estimates are descriptive exposure, not expected collision risk.",
     )

@@ -29,3 +29,22 @@ value will remain an archived experiment.
 Only information available before the prediction period may be used. Weather,
 lighting, and road-surface conditions observed during a future collision are
 not valid occurrence-model features.
+
+## Network matching gate
+
+Collision matches are accepted only within 50 metres of a DfT major-road link.
+A match is marked ambiguous when the second candidate is within 10 metres of
+the nearest candidate. Ambiguous and out-of-range records are excluded from
+segment aggregation and reported separately.
+
+## Exposure interpretation
+
+The descriptive rate is collisions per 100 million annual vehicle-kilometres,
+using AADF and DfT link length. It is not an expected collision frequency and
+is not adjusted for regression to the mean, road characteristics, uncertainty,
+or exposure-estimation quality.
+
+The versioned evaluation contract is stored in
+`configs/evaluation-v1.json`. Its status remains `planned-not-run` until the
+multi-year pipeline exists and all declared temporal and geographic tests have
+actually executed.
