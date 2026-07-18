@@ -1,0 +1,11 @@
+cff-version: 1.2.0
+message: "If you use RoadSafe UK in research, please cite the project and the underlying DfT data."
+title: "RoadSafe UK"
+type: software
+authors:
+  - family-names: Pawar
+    given-names: Jeevan Mohan
+repository-code: "https://github.com/jeevan6996/roadsafe-uk"
+license: MIT
+version: 0.1.0
+date-released: 2026-07-18
