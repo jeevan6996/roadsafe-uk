@@ -15,6 +15,10 @@
 
 ## 0.3 Statistical screening
 
+- completed: stable count-point identity and authority/road-class metadata
+- completed: longitudinal panel builder and evaluation-readiness report
+- next: ingest and match annual 2019–2023 collision/network evidence
+- next: join authoritative segment-level urban/rural classification
 - negative-binomial Safety Performance Function
 - Empirical Bayes expected frequency and excess-frequency estimates
 - temporal and geographic backtests with uncertainty intervals
