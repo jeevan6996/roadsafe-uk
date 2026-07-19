@@ -24,6 +24,18 @@ Licence: Open Government Licence v3.0.
 Every downloaded file will receive a manifest containing source URL, retrieval
 time, checksum, publication status, reporting period, and licence.
 
+The `fetch-sources` command implements this contract for official inputs needed
+for final 2019–2024 STATS19 collision years, annual Major Roads Database
+archives, and the shared AADF bulk archive. Transfers use a temporary file and
+are promoted only after content validation. A local artifact is reused only
+when its URL, size, and SHA-256 still agree with its manifest. The catalogue
+deliberately excludes provisional years from the modelling panel.
+
+The current DfT page offers standalone final collision files for 2020–2024.
+The 2019 input is therefore acquired from the official 1979–latest collision
+file and validated by confirming that 2019 is present. This source is much
+larger than the annual files and is not represented as an annual-only asset.
+
 ## DfT Major Roads Database
 
 The 2024 Major Roads Database supplies year-aligned major-road link geometry.

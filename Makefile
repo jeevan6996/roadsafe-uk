@@ -1,4 +1,4 @@
-.PHONY: setup check test api web data-pilot data-network
+.PHONY: setup check test api web data-fetch data-pilot data-network
 
 setup:
 	python -m pip install -e '.[dev]'
@@ -19,6 +19,9 @@ api:
 
 web:
 	cd apps/web && npm run dev
+
+data-fetch:
+	roadsafe fetch-sources --years 2019 2020 2021 2022 2023 2024 --output data/raw
 
 data-pilot:
 	roadsafe build-pilot --source data/raw/dft-road-casualty-statistics-collision-2024.csv --output data/processed

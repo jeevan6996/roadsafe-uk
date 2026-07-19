@@ -2,6 +2,12 @@ import argparse
 import json
 from pathlib import Path
 
+from roadsafe.acquisition import (
+    SOURCE_KINDS,
+    AcquisitionError,
+    SourceKind,
+    acquire_sources,
+)
 from roadsafe.evaluation import build_segment_year_panel
 from roadsafe.network import build_network_evidence
 from roadsafe.pipeline import build_pilot
@@ -10,6 +16,13 @@ from roadsafe.pipeline import build_pilot
 def create_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="roadsafe")
     commands = parser.add_subparsers(dest="command", required=True)
+    fetch = commands.add_parser(
+        "fetch-sources", help="Acquire official DfT inputs with provenance manifests"
+    )
+    fetch.add_argument("--years", required=True, nargs="+", type=int)
+    fetch.add_argument("--kinds", nargs="+", choices=SOURCE_KINDS, default=list(SOURCE_KINDS))
+    fetch.add_argument("--output", required=True, type=Path)
+    fetch.add_argument("--refresh", action="store_true")
     pilot = commands.add_parser("build-pilot", help="Build the West Yorkshire pilot dataset")
     pilot.add_argument("--source", required=True, type=Path)
     pilot.add_argument("--output", required=True, type=Path)
@@ -31,8 +44,17 @@ def create_parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
-    args = create_parser().parse_args()
-    if args.command == "build-pilot":
+    parser = create_parser()
+    args = parser.parse_args()
+    if args.command == "fetch-sources":
+        try:
+            report = acquire_sources(
+                args.years, args.output, set[SourceKind](args.kinds), args.refresh
+            )
+        except AcquisitionError as error:
+            parser.error(str(error))
+        print(json.dumps(report, indent=2, sort_keys=True))
+    elif args.command == "build-pilot":
         report = build_pilot(args.source, args.output)
         print(json.dumps(report, indent=2, sort_keys=True))
     elif args.command == "build-network":

@@ -23,6 +23,7 @@ road-network graph models.
 ## Current vertical slice
 
 - provenance-aware ingestion of the official DfT collision CSV
+- atomic, checksum-verified acquisition of official inputs for final 2019-2024 collision years
 - schema, coordinate, duplicate-key, and severity validation
 - reproducible West Yorkshire pilot extraction to Parquet
 - machine-readable data quality report
@@ -71,11 +72,29 @@ ROADSAFE_NETWORK_PATH=data/processed/segment-evidence-2024.geojson \
   uvicorn roadsafe.api.app:app --reload
 ```
 
+## Acquire official source data
+
+Fetch final annual collision and major-road inputs plus the shared AADF archive:
+
+```bash
+roadsafe fetch-sources \
+  --years 2019 2020 2021 2022 2023 2024 \
+  --output data/raw
+```
+
+Use `--kinds collision`, `--kinds roads`, or `--kinds aadf` for a selective
+download. Existing artifacts are reused only when their URL, byte count, and
+SHA-256 agree with the adjacent manifest; `--refresh` forces retrieval.
+Downloads are written atomically, and each manifest records the official
+source page, reporting period, publication status, licence, retrieval time,
+size, checksum, and validation result. Bulk inputs remain excluded from Git.
+DfT no longer offers 2019 as a standalone annual collision file, so requesting
+2019 acquires and validates the substantially larger 1979–latest historical
+collision file. Years 2020–2024 use the smaller annual publications.
+
 ## Build the pilot dataset
 
-Download the official 2024 collision file from the
-[DfT road safety open data page](https://www.gov.uk/government/statistical-data-sets/road-safety-open-data),
-then run:
+After acquisition, build a year-specific collision pilot:
 
 ```bash
 roadsafe build-pilot \
@@ -88,9 +107,7 @@ datasets are intentionally excluded from Git.
 
 ## Build network and exposure evidence
 
-Download the official 2024 Major Roads Database and AADF CSV from the
-[DfT road traffic downloads](https://roadtraffic.dft.gov.uk/downloads), then
-run:
+Extract the acquired Major Roads Database and AADF archives, then run:
 
 ```bash
 roadsafe build-network \
