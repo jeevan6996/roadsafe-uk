@@ -28,7 +28,9 @@ road-network graph models.
 - machine-readable data quality report
 - collision-to-link matching with distance and ambiguity diagnostics
 - exact DfT count-point to AADF exposure joins with method quality flags
+- stable count-point keys and local-authority/road-class metadata for longitudinal analysis
 - segment evidence in Parquet and GeoJSON
+- contract-aware segment-year panel construction with explicit readiness blockers
 - versioned FastAPI endpoints for collision and major-road evidence
 - React and MapLibre observed/exposure investigation modes
 - future-year and grouped-authority evaluation contract
@@ -102,6 +104,24 @@ roadsafe build-network \
 The command writes accepted/rejected matches, segment evidence, serving
 GeoJSON, and a quality report. AADF-derived rates are descriptive and remain
 separate from future expected-frequency models.
+
+## Build the evaluation panel
+
+After building annual evidence for every contract year, combine the artifacts
+without training a model:
+
+```bash
+roadsafe build-panel \
+  --evidence data/processed/segment-evidence-{2019,2020,2021,2022,2023,2024}.parquet \
+  --contract configs/evaluation-v1.json \
+  --output data/processed
+```
+
+This writes `segment-year-panel.parquet` and
+`panel-readiness-report.json`. Readiness requires all declared years, valid
+exposure and targets, unique segment-year records, and complete subgroup
+fields. The current 2024 pilot is correctly reported as blocked: 2019–2023
+and a defensible segment-level urban/rural classification are still missing.
 
 ## Documentation
 

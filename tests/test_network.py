@@ -42,6 +42,8 @@ def test_aadf_links_exactly_to_count_point_ids() -> None:
     assert aadf.height == 6
     assert aadf.filter(pl.col("estimation_method") == "Counted").height == 1
     assert aadf["all_motor_vehicles"].min() == 7877
+    assert aadf["local_authority_code"].unique().to_list() == ["E08000032"]
+    assert set(aadf["road_category"]) == {"PA", "TM"}
 
 
 def test_build_network_writes_evidence_and_diagnostics(tmp_path: Path) -> None:
@@ -55,6 +57,9 @@ def test_build_network_writes_evidence_and_diagnostics(tmp_path: Path) -> None:
     assert report["exposure_source_sha256"]
     assert (tmp_path / "collision-segment-matches-2024.parquet").exists()
     assert (tmp_path / "segment-evidence-2024.parquet").exists()
+    saved = pl.read_parquet(tmp_path / "segment-evidence-2024.parquet")
+    assert saved["segment_key"].n_unique() == 6
+    assert saved["local_authority_name"].unique().to_list() == ["Bradford"]
     geojson = json.loads((tmp_path / "segment-evidence-2024.geojson").read_text())
     assert len(geojson["features"]) == 6
     assert sum(feature["properties"]["collision_count"] for feature in geojson["features"]) == 2
@@ -73,6 +78,23 @@ def test_matching_marks_near_equal_candidates_ambiguous() -> None:
     assert match["match_status"] == "ambiguous"
     assert match["segment_id"] is None
     assert match["candidate_count"] == 2
+
+
+def test_build_network_rejects_collision_year_mismatch(tmp_path: Path) -> None:
+    with pytest.raises(NetworkValidationError, match="do not match network year 2023"):
+        build_network_evidence(COLLISIONS, ROADS, AADF, tmp_path, year=2023)
+
+
+def test_road_segments_require_unique_count_points(tmp_path: Path) -> None:
+    payload = json.loads(ROADS.read_text())
+    payload["features"][1]["properties"]["count_point_id"] = payload["features"][0]["properties"][
+        "count_point_id"
+    ]
+    invalid = tmp_path / "roads.geojson"
+    invalid.write_text(json.dumps(payload))
+
+    with pytest.raises(NetworkValidationError, match="count-point identifiers are not unique"):
+        read_road_segments(invalid)
 
 
 def test_aadf_rejects_missing_contract_columns(tmp_path: Path) -> None:

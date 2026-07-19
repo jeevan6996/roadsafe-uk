@@ -48,3 +48,23 @@ The versioned evaluation contract is stored in
 `configs/evaluation-v1.json`. Its status remains `planned-not-run` until the
 multi-year pipeline exists and all declared temporal and geographic tests have
 actually executed.
+
+## Panel readiness gate
+
+`roadsafe build-panel` assembles annual evidence using the stable DfT count
+point key while retaining each year's geometry-specific segment identifier.
+Before any baseline or model is fit, it reports:
+
+- missing training, validation, or test years
+- duplicate segment-year records
+- non-positive or missing exposure
+- missing or negative KSI targets
+- absent or incomplete fields for every required subgroup
+- fewer than two local-authority groups for geographic holdout
+- the number of segments with complete contract-period history
+
+The current 2024 artifact fails this gate by design. It lacks 2019–2023 and
+segment-level urban/rural classification. Local authority, road category, road
+type, and traffic estimation method now flow from the official AADF source,
+but urban/rural status needs a separately documented spatial source rather than
+an inference from road category or authority.

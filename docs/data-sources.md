@@ -17,9 +17,9 @@ Licence: Open Government Licence v3.0.
 
 ## Planned enrichment
 
-- DfT annual average daily flow and count-point quality metadata
 - OS Open Roads geometry and network identifiers
 - official local-authority boundaries
+- segment-level urban/rural classification from an authoritative spatial source
 
 Every downloaded file will receive a manifest containing source URL, retrieval
 time, checksum, publication status, reporting period, and licence.
@@ -38,6 +38,12 @@ day. The pipeline preserves `estimation_method` and
 `estimation_method_detailed`; counted and estimated values are never presented
 as equivalent quality. DfT cautions that individual-link estimates are less
 robust than regional or national statistics.
+
+The bulk AADF archive covers 2000 onward and supplies the stable
+`count_point_id`, reporting year, region, local-authority ID/name/code, road
+category, road type, link length, vehicle flows, and estimation method retained
+by the annual evidence pipeline. It does not provide the segment-level
+urban/rural field required by the evaluation contract.
 
 ## OS Open Roads
 

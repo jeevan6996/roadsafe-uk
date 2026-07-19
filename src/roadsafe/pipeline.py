@@ -12,6 +12,7 @@ SOURCE_URL = (
     "https://data.dft.gov.uk/road-accidents-safety-data/"
     "dft-road-casualty-statistics-collision-2024.csv"
 )
+SOURCE_PAGE_URL = "https://www.gov.uk/government/statistical-data-sets/road-safety-open-data"
 
 REQUIRED_COLUMNS = {
     "collision_index",
@@ -68,8 +69,16 @@ def read_collisions(path: Path) -> pl.DataFrame:
     return frame
 
 
+def collision_source_year(frame: pl.DataFrame) -> int:
+    years = frame["collision_year"].drop_nulls().unique().to_list()
+    if len(years) != 1:
+        raise DataValidationError("Collision source must contain exactly one reporting year")
+    return int(years[0])
+
+
 def build_pilot(source: Path, output: Path) -> dict[str, Any]:
     frame = read_collisions(source)
+    source_year = collision_source_year(frame)
     missing_coordinates = frame.filter(
         pl.col("longitude").is_null() | pl.col("latitude").is_null()
     ).height
@@ -92,7 +101,7 @@ def build_pilot(source: Path, output: Path) -> dict[str, Any]:
     )
 
     output.mkdir(parents=True, exist_ok=True)
-    pilot_path = output / "pilot-collisions-2024.parquet"
+    pilot_path = output / f"pilot-collisions-{source_year}.parquet"
     pilot.write_parquet(pilot_path)
 
     severity_counts = {
@@ -101,7 +110,9 @@ def build_pilot(source: Path, output: Path) -> dict[str, Any]:
     }
     report: dict[str, Any] = {
         "generated_at": datetime.now(UTC).isoformat(),
-        "source": SOURCE_URL,
+        "source": SOURCE_URL if source_year == 2024 else SOURCE_PAGE_URL,
+        "source_file": source.name,
+        "source_year": source_year,
         "source_sha256": sha256_file(source),
         "source_records": frame.height,
         "pilot_records": pilot.height,
@@ -111,7 +122,7 @@ def build_pilot(source: Path, output: Path) -> dict[str, Any]:
         "output": str(pilot_path),
         "status": "observed-evidence-only",
     }
-    (output / "data-quality-report.json").write_text(
+    (output / f"data-quality-report-{source_year}.json").write_text(
         json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )
     return report

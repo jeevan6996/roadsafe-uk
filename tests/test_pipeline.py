@@ -4,7 +4,12 @@ from pathlib import Path
 import polars as pl
 import pytest
 
-from roadsafe.pipeline import DataValidationError, build_pilot, read_collisions
+from roadsafe.pipeline import (
+    DataValidationError,
+    build_pilot,
+    collision_source_year,
+    read_collisions,
+)
 
 FIXTURE = Path(__file__).parent / "fixtures" / "dft-collisions-west-yorkshire-2024.csv"
 
@@ -29,5 +34,11 @@ def test_build_pilot_writes_parquet_and_quality_report(tmp_path: Path) -> None:
     assert report["pilot_records"] == 12
     assert report["severity_counts"] == {"2": 3, "3": 9}
     assert (tmp_path / "pilot-collisions-2024.parquet").exists()
-    saved_report = json.loads((tmp_path / "data-quality-report.json").read_text())
+    saved_report = json.loads((tmp_path / "data-quality-report-2024.json").read_text())
     assert saved_report["source_sha256"] == report["source_sha256"]
+    assert saved_report["source_year"] == 2024
+
+
+def test_collision_source_year_rejects_mixed_annual_data() -> None:
+    with pytest.raises(DataValidationError, match="exactly one reporting year"):
+        collision_source_year(pl.DataFrame({"collision_year": [2023, 2024]}))

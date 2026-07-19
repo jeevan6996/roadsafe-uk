@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- generalize collision and network artifacts to validated source years
+- preserve stable count-point keys, authority metadata, road category, and road type
+- add contract-aware segment-year panel construction and readiness reporting
+- reject duplicate segment-years, year mismatches, invalid exposure/targets, and incomplete subgroups
+
 ## 0.2.0 - 2026-07-18
 
 - add DfT 2024 major-road geometry and AADF source contracts
