@@ -5,8 +5,10 @@ serving.
 
 ```mermaid
 flowchart LR
-    DFT[DfT STATS19] --> RAW[Versioned raw assets]
-    TRAFFIC[DfT traffic counts] --> RAW
+    DFT[DfT STATS19] --> ACQUIRE[Atomic acquisition and validation]
+    TRAFFIC[DfT traffic counts] --> ACQUIRE
+    ACQUIRE --> MANIFEST[Checksums and provenance manifests]
+    MANIFEST --> RAW[Versioned raw assets]
     OS[OS Open Roads] --> RAW
     RAW --> VALIDATE[Validation and decoding]
     VALIDATE --> MATCH[Road and exposure matching]

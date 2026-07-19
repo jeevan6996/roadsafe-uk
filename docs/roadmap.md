@@ -17,6 +17,7 @@
 
 - completed: stable count-point identity and authority/road-class metadata
 - completed: longitudinal panel builder and evaluation-readiness report
+- completed: atomic official-source acquisition with provenance manifests
 - next: ingest and match annual 2019–2023 collision/network evidence
 - next: join authoritative segment-level urban/rural classification
 - negative-binomial Safety Performance Function
