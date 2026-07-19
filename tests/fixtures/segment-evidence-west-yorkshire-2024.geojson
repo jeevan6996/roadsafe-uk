@@ -3,32 +3,32 @@
   "features": [
     {
       "type": "Feature",
-      "properties": {"segment_id": "dft-mrdb-2024-17705", "count_point_id": 17705, "road_number": "A6177", "source_year": 2024, "all_motor_vehicles": 49615, "estimation_method": "Counted", "estimation_method_detailed": "Manual count", "link_length_km": 1.6, "collision_count": 0, "ksi_count": 0, "collision_rate_per_100m_vehicle_km": 0.0},
+      "properties": {"segment_key": "dft-count-point-17705", "segment_id": "dft-mrdb-2024-17705", "count_point_id": 17705, "road_number": "A6177", "source_year": 2024, "local_authority_name": "Bradford", "local_authority_code": "E08000032", "road_category": "PA", "road_type": "Major", "all_motor_vehicles": 49615, "estimation_method": "Counted", "estimation_method_detailed": "Manual count", "link_length_km": 1.6, "collision_count": 0, "ksi_count": 0, "collision_rate_per_100m_vehicle_km": 0.0},
       "geometry": {"type": "LineString", "coordinates": [[-1.7491836369162654, 53.76851289530511], [-1.730191705235541, 53.77287583480627]]}
     },
     {
       "type": "Feature",
-      "properties": {"segment_id": "dft-mrdb-2024-47441", "count_point_id": 47441, "road_number": "A650", "source_year": 2024, "all_motor_vehicles": 38360, "estimation_method": "Estimated", "estimation_method_detailed": "Estimated using AADF from previous year on this link", "link_length_km": 2.1, "collision_count": 0, "ksi_count": 0, "collision_rate_per_100m_vehicle_km": 0.0},
+      "properties": {"segment_key": "dft-count-point-47441", "segment_id": "dft-mrdb-2024-47441", "count_point_id": 47441, "road_number": "A650", "source_year": 2024, "local_authority_name": "Bradford", "local_authority_code": "E08000032", "road_category": "PA", "road_type": "Major", "all_motor_vehicles": 38360, "estimation_method": "Estimated", "estimation_method_detailed": "Estimated using AADF from previous year on this link", "link_length_km": 2.1, "collision_count": 0, "ksi_count": 0, "collision_rate_per_100m_vehicle_km": 0.0},
       "geometry": {"type": "LineString", "coordinates": [[-1.7460323191658726, 53.79044599936621], [-1.7274404629081959, 53.77598846152987]]}
     },
     {
       "type": "Feature",
-      "properties": {"segment_id": "dft-mrdb-2024-47907", "count_point_id": 47907, "road_number": "A6177", "source_year": 2024, "all_motor_vehicles": 7877, "estimation_method": "Estimated", "estimation_method_detailed": "Estimated using AADF from previous year on this link", "link_length_km": 1.1, "collision_count": 1, "ksi_count": 0, "collision_rate_per_100m_vehicle_km": 31.6194},
+      "properties": {"segment_key": "dft-count-point-47907", "segment_id": "dft-mrdb-2024-47907", "count_point_id": 47907, "road_number": "A6177", "source_year": 2024, "local_authority_name": "Bradford", "local_authority_code": "E08000032", "road_category": "PA", "road_type": "Major", "all_motor_vehicles": 7877, "estimation_method": "Estimated", "estimation_method_detailed": "Estimated using AADF from previous year on this link", "link_length_km": 1.1, "collision_count": 1, "ksi_count": 0, "collision_rate_per_100m_vehicle_km": 31.6194},
       "geometry": {"type": "LineString", "coordinates": [[-1.7306188907488809, 53.80808277548166], [-1.7447848094716059, 53.810935942992316]]}
     },
     {
       "type": "Feature",
-      "properties": {"segment_id": "dft-mrdb-2024-57940", "count_point_id": 57940, "road_number": "A658", "source_year": 2024, "all_motor_vehicles": 21781, "estimation_method": "Estimated", "estimation_method_detailed": "Estimated using AADF from previous year on this link", "link_length_km": 1.8, "collision_count": 1, "ksi_count": 1, "collision_rate_per_100m_vehicle_km": 6.9881},
+      "properties": {"segment_key": "dft-count-point-57940", "segment_id": "dft-mrdb-2024-57940", "count_point_id": 57940, "road_number": "A658", "source_year": 2024, "local_authority_name": "Bradford", "local_authority_code": "E08000032", "road_category": "PA", "road_type": "Major", "all_motor_vehicles": 21781, "estimation_method": "Estimated", "estimation_method_detailed": "Estimated using AADF from previous year on this link", "link_length_km": 1.8, "collision_count": 1, "ksi_count": 1, "collision_rate_per_100m_vehicle_km": 6.9881},
       "geometry": {"type": "LineString", "coordinates": [[-1.7199025224727509, 53.816515928916935], [-1.7121006315498493, 53.831309617083434]]}
     },
     {
       "type": "Feature",
-      "properties": {"segment_id": "dft-mrdb-2024-58268", "count_point_id": 58268, "road_number": "A6181", "source_year": 2024, "all_motor_vehicles": 14215, "estimation_method": "Estimated", "estimation_method_detailed": "Estimated using AADF from previous year on this link", "link_length_km": 0.4, "collision_count": 0, "ksi_count": 0, "collision_rate_per_100m_vehicle_km": 0.0},
+      "properties": {"segment_key": "dft-count-point-58268", "segment_id": "dft-mrdb-2024-58268", "count_point_id": 58268, "road_number": "A6181", "source_year": 2024, "local_authority_name": "Bradford", "local_authority_code": "E08000032", "road_category": "PA", "road_type": "Major", "all_motor_vehicles": 14215, "estimation_method": "Estimated", "estimation_method_detailed": "Estimated using AADF from previous year on this link", "link_length_km": 0.4, "collision_count": 0, "ksi_count": 0, "collision_rate_per_100m_vehicle_km": 0.0},
       "geometry": {"type": "LineString", "coordinates": [[-1.7485782804739218, 53.793678046847], [-1.743102061189106, 53.793046282013094]]}
     },
     {
       "type": "Feature",
-      "properties": {"segment_id": "dft-mrdb-2024-73112", "count_point_id": 73112, "road_number": "M606", "source_year": 2024, "all_motor_vehicles": 63273, "estimation_method": "Estimated", "estimation_method_detailed": "Estimated using AADF from previous year on this link", "link_length_km": 2.5, "collision_count": 0, "ksi_count": 0, "collision_rate_per_100m_vehicle_km": 0.0},
+      "properties": {"segment_key": "dft-count-point-73112", "segment_id": "dft-mrdb-2024-73112", "count_point_id": 73112, "road_number": "M606", "source_year": 2024, "local_authority_name": "Bradford", "local_authority_code": "E08000032", "road_category": "TM", "road_type": "Major", "all_motor_vehicles": 63273, "estimation_method": "Estimated", "estimation_method_detailed": "Estimated using AADF from previous year on this link", "link_length_km": 2.5, "collision_count": 0, "ksi_count": 0, "collision_rate_per_100m_vehicle_km": 0.0},
       "geometry": {"type": "LineString", "coordinates": [[-1.7362699393158867, 53.747183548420004], [-1.7491836369162654, 53.76851289530511]]}
     }
   ]

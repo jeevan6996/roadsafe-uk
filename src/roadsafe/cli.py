@@ -2,6 +2,7 @@ import argparse
 import json
 from pathlib import Path
 
+from roadsafe.evaluation import build_segment_year_panel
 from roadsafe.network import build_network_evidence
 from roadsafe.pipeline import build_pilot
 
@@ -20,6 +21,12 @@ def create_parser() -> argparse.ArgumentParser:
     network.add_argument("--aadf", required=True, type=Path)
     network.add_argument("--output", required=True, type=Path)
     network.add_argument("--year", default=2024, type=int)
+    panel = commands.add_parser(
+        "build-panel", help="Build and assess a longitudinal segment-year evidence panel"
+    )
+    panel.add_argument("--evidence", required=True, nargs="+", type=Path)
+    panel.add_argument("--contract", required=True, type=Path)
+    panel.add_argument("--output", required=True, type=Path)
     return parser
 
 
@@ -32,6 +39,9 @@ def main() -> None:
         report = build_network_evidence(
             args.collisions, args.roads, args.aadf, args.output, args.year
         )
+        print(json.dumps(report, indent=2, sort_keys=True))
+    elif args.command == "build-panel":
+        report = build_segment_year_panel(args.evidence, args.contract, args.output)
         print(json.dumps(report, indent=2, sort_keys=True))
 
 

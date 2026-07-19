@@ -15,7 +15,7 @@ from shapely.strtree import STRtree
 
 from roadsafe.pipeline import PILOT_BOUNDS, read_collisions, sha256_file
 
-MRDB_URL = "https://storage.googleapis.com/dft-statistics/road-traffic/mrdb-2024.zip"
+MRDB_URL_TEMPLATE = "https://storage.googleapis.com/dft-statistics/road-traffic/mrdb-{year}.zip"
 AADF_URL = (
     "https://storage.googleapis.com/dft-statistics/road-traffic/downloads/"
     "data-gov-uk/dft_traffic_counts_aadf.zip"
@@ -23,6 +23,26 @@ AADF_URL = (
 MAX_MATCH_DISTANCE_METRES = 50.0
 AMBIGUITY_MARGIN_METRES = 10.0
 RATE_SCALE = 100_000_000
+AADF_REQUIRED_COLUMNS = {
+    "count_point_id",
+    "year",
+    "region_id",
+    "region_name",
+    "region_ons_code",
+    "local_authority_id",
+    "local_authority_name",
+    "local_authority_code",
+    "road_name",
+    "road_category",
+    "road_type",
+    "estimation_method",
+    "estimation_method_detailed",
+    "all_motor_vehicles",
+    "cars_and_taxis",
+    "LGVs",
+    "all_HGVs",
+    "link_length_km",
+}
 
 TO_BNG = Transformer.from_crs("EPSG:4326", "EPSG:27700", always_xy=True)
 TO_WGS84 = Transformer.from_crs("EPSG:27700", "EPSG:4326", always_xy=True)
@@ -95,37 +115,28 @@ def read_road_segments(path: Path, source_year: int = 2024) -> list[RoadSegment]
     ids = [segment.segment_id for segment in segments]
     if len(ids) != len(set(ids)):
         raise NetworkValidationError("Road segment identifiers are not unique")
+    count_point_ids = [segment.count_point_id for segment in segments]
+    if len(count_point_ids) != len(set(count_point_ids)):
+        raise NetworkValidationError("Road segment count-point identifiers are not unique")
     if not segments:
         raise NetworkValidationError("No road segments intersect the pilot area")
     return segments
 
 
 def read_aadf(path: Path, count_point_ids: set[int], year: int = 2024) -> pl.DataFrame:
-    required = {
-        "count_point_id",
-        "year",
-        "road_name",
-        "estimation_method",
-        "estimation_method_detailed",
-        "all_motor_vehicles",
-        "cars_and_taxis",
-        "LGVs",
-        "all_HGVs",
-        "link_length_km",
-    }
     columns = pl.read_csv(path, n_rows=0).columns
-    missing = required.difference(columns)
+    missing = AADF_REQUIRED_COLUMNS.difference(columns)
     if missing:
         raise NetworkValidationError(f"Missing AADF columns: {', '.join(sorted(missing))}")
     frame = pl.read_csv(
         path,
-        columns=sorted(required),
+        columns=sorted(AADF_REQUIRED_COLUMNS),
         infer_schema_length=10_000,
         null_values=["", "NA"],
     )
     frame = (
         frame.filter((pl.col("year") == year) & pl.col("count_point_id").is_in(count_point_ids))
-        .select(sorted(required))
+        .select(sorted(AADF_REQUIRED_COLUMNS))
         .rename({"LGVs": "lgvs", "all_HGVs": "all_hgvs"})
     )
     if frame.select(pl.struct(["count_point_id", "year"]).is_duplicated().sum()).item():
@@ -201,6 +212,7 @@ def match_collisions(
 def _segment_frame(segments: list[RoadSegment]) -> pl.DataFrame:
     return pl.DataFrame(
         {
+            "segment_key": [f"dft-count-point-{segment.count_point_id}" for segment in segments],
             "segment_id": [segment.segment_id for segment in segments],
             "count_point_id": [segment.count_point_id for segment in segments],
             "road_number": [segment.road_number for segment in segments],
@@ -232,6 +244,11 @@ def build_network_evidence(
         if collision_path.suffix == ".parquet"
         else read_collisions(collision_path)
     )
+    collision_years = collisions["collision_year"].drop_nulls().unique().to_list()
+    if collision_years != [year]:
+        raise NetworkValidationError(
+            f"Collision reporting years {sorted(collision_years)} do not match network year {year}"
+        )
     segments = read_road_segments(road_path, source_year=year)
     aadf = read_aadf(aadf_path, {segment.count_point_id for segment in segments}, year)
     matches = match_collisions(collisions, segments)
@@ -270,8 +287,12 @@ def build_network_evidence(
     )
 
     output.mkdir(parents=True, exist_ok=True)
-    matches.write_parquet(output / "collision-segment-matches-2024.parquet")
-    evidence.write_parquet(output / "segment-evidence-2024.parquet")
+    match_path = output / f"collision-segment-matches-{year}.parquet"
+    evidence_path = output / f"segment-evidence-{year}.parquet"
+    geojson_path = output / f"segment-evidence-{year}.geojson"
+    report_path = output / f"network-quality-report-{year}.json"
+    matches.write_parquet(match_path)
+    evidence.write_parquet(evidence_path)
 
     evidence_by_id = {row["segment_id"]: row for row in evidence.to_dicts()}
     geojson = {
@@ -285,9 +306,7 @@ def build_network_evidence(
             for segment in segments
         ],
     }
-    (output / "segment-evidence-2024.geojson").write_text(
-        json.dumps(geojson, indent=2) + "\n", encoding="utf-8"
-    )
+    geojson_path.write_text(json.dumps(geojson, indent=2) + "\n", encoding="utf-8")
 
     statuses = {
         row["match_status"]: row["len"] for row in matches.group_by("match_status").len().to_dicts()
@@ -299,7 +318,7 @@ def build_network_evidence(
     report: dict[str, Any] = {
         "generated_at": datetime.now(UTC).isoformat(),
         "source_year": year,
-        "road_source": MRDB_URL,
+        "road_source": MRDB_URL_TEMPLATE.format(year=year),
         "road_source_sha256": _road_source_hashes(road_path),
         "exposure_source": AADF_URL,
         "exposure_source_sha256": sha256_file(aadf_path),
@@ -312,10 +331,14 @@ def build_network_evidence(
         "max_match_distance_metres": MAX_MATCH_DISTANCE_METRES,
         "ambiguity_margin_metres": AMBIGUITY_MARGIN_METRES,
         "aadf_estimation_methods": method_counts,
+        "local_authorities": sorted(evidence["local_authority_code"].drop_nulls().unique()),
         "rate_scale_vehicle_km": RATE_SCALE,
+        "outputs": {
+            "matches": str(match_path),
+            "evidence": str(evidence_path),
+            "geojson": str(geojson_path),
+        },
         "status": "descriptive-exposure-only",
     }
-    (output / "network-quality-report.json").write_text(
-        json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8"
-    )
+    report_path.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return report
