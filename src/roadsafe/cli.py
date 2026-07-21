@@ -10,6 +10,7 @@ from roadsafe.acquisition import (
 )
 from roadsafe.evaluation import build_segment_year_panel
 from roadsafe.network import build_network_evidence
+from roadsafe.orchestration import build_contract_evidence
 from roadsafe.pipeline import build_pilot
 
 
@@ -26,6 +27,7 @@ def create_parser() -> argparse.ArgumentParser:
     pilot = commands.add_parser("build-pilot", help="Build the West Yorkshire pilot dataset")
     pilot.add_argument("--source", required=True, type=Path)
     pilot.add_argument("--output", required=True, type=Path)
+    pilot.add_argument("--year", type=int)
     network = commands.add_parser(
         "build-network", help="Build segment matching and traffic-exposure evidence"
     )
@@ -40,6 +42,15 @@ def create_parser() -> argparse.ArgumentParser:
     panel.add_argument("--evidence", required=True, nargs="+", type=Path)
     panel.add_argument("--contract", required=True, type=Path)
     panel.add_argument("--output", required=True, type=Path)
+    contract = commands.add_parser(
+        "build-contract", help="Build annual evidence for every year in an evaluation contract"
+    )
+    contract.add_argument("--collision-template", required=True)
+    contract.add_argument("--historical-collision-source", type=Path)
+    contract.add_argument("--road-template", required=True)
+    contract.add_argument("--aadf", required=True, type=Path)
+    contract.add_argument("--contract", required=True, type=Path)
+    contract.add_argument("--output", required=True, type=Path)
     return parser
 
 
@@ -55,7 +66,7 @@ def main() -> None:
             parser.error(str(error))
         print(json.dumps(report, indent=2, sort_keys=True))
     elif args.command == "build-pilot":
-        report = build_pilot(args.source, args.output)
+        report = build_pilot(args.source, args.output, args.year)
         print(json.dumps(report, indent=2, sort_keys=True))
     elif args.command == "build-network":
         report = build_network_evidence(
@@ -64,6 +75,16 @@ def main() -> None:
         print(json.dumps(report, indent=2, sort_keys=True))
     elif args.command == "build-panel":
         report = build_segment_year_panel(args.evidence, args.contract, args.output)
+        print(json.dumps(report, indent=2, sort_keys=True))
+    elif args.command == "build-contract":
+        report = build_contract_evidence(
+            args.collision_template,
+            args.road_template,
+            args.aadf,
+            args.contract,
+            args.output,
+            args.historical_collision_source,
+        )
         print(json.dumps(report, indent=2, sort_keys=True))
 
 

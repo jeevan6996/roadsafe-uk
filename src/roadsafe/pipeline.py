@@ -76,15 +76,23 @@ def collision_source_year(frame: pl.DataFrame) -> int:
     return int(years[0])
 
 
-def build_pilot(source: Path, output: Path) -> dict[str, Any]:
+def build_pilot(source: Path, output: Path, year: int | None = None) -> dict[str, Any]:
     frame = read_collisions(source)
-    source_year = collision_source_year(frame)
+    if year is None:
+        source_year = collision_source_year(frame)
+        source_frame = frame
+    else:
+        source_year = year
+        source_frame = frame.filter(pl.col("collision_year") == year)
+        if source_frame.is_empty():
+            raise DataValidationError(f"Collision source does not contain reporting year {year}")
+
     missing_coordinates = frame.filter(
         pl.col("longitude").is_null() | pl.col("latitude").is_null()
     ).height
 
     pilot = (
-        frame.filter(
+        source_frame.filter(
             pl.col("longitude").is_between(
                 PILOT_BOUNDS["min_longitude"], PILOT_BOUNDS["max_longitude"]
             )
@@ -115,6 +123,7 @@ def build_pilot(source: Path, output: Path) -> dict[str, Any]:
         "source_year": source_year,
         "source_sha256": sha256_file(source),
         "source_records": frame.height,
+        "selected_source_records": source_frame.height,
         "pilot_records": pilot.height,
         "missing_source_coordinates": missing_coordinates,
         "severity_counts": severity_counts,

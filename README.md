@@ -32,6 +32,7 @@ road-network graph models.
 - stable count-point keys and local-authority/road-class metadata for longitudinal analysis
 - segment evidence in Parquet and GeoJSON
 - contract-aware segment-year panel construction with explicit readiness blockers
+- contract-level annual evidence orchestration across all evaluation years
 - versioned FastAPI endpoints for collision and major-road evidence
 - React and MapLibre observed/exposure investigation modes
 - future-year and grouped-authority evaluation contract
@@ -139,6 +140,24 @@ This writes `segment-year-panel.parquet` and
 exposure and targets, unique segment-year records, and complete subgroup
 fields. The current 2024 pilot is correctly reported as blocked: 2019–2023
 and a defensible segment-level urban/rural classification are still missing.
+
+To run the full contract workflow from source templates, use:
+
+```bash
+roadsafe build-contract \
+  --collision-template 'data/raw/dft-road-casualty-statistics-collision-{year}.csv' \
+  --historical-collision-source \
+    data/raw/dft-road-casualty-statistics-collision-1979-latest-published-year.csv \
+  --road-template 'data/raw/MRDB_{year}_published.shp' \
+  --aadf data/raw/dft_traffic_counts_aadf.csv \
+  --contract configs/evaluation-v1.json \
+  --output data/processed
+```
+
+The command extracts each required reporting year, builds the annual pilot and
+network evidence artifacts, and then runs the panel readiness gate. The
+explicit historical source is used for 2019 because DfT no longer publishes a
+standalone final 2019 collision CSV.
 
 ## Documentation
 

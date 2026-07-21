@@ -62,7 +62,7 @@ class RoadSegment:
     geometry_wgs84: LineString
 
 
-def _segment_from_wgs84(feature: dict[str, Any]) -> RoadSegment:
+def _segment_from_wgs84(feature: dict[str, Any], source_year: int) -> RoadSegment:
     properties = feature["properties"]
     geometry_wgs84 = cast(LineString, shape(feature["geometry"]))
     geometry_bng = transform(TO_BNG.transform, geometry_wgs84)
@@ -70,7 +70,7 @@ def _segment_from_wgs84(feature: dict[str, Any]) -> RoadSegment:
         segment_id=str(properties["segment_id"]),
         count_point_id=int(properties["count_point_id"]),
         road_number=str(properties["road_number"]),
-        source_year=int(properties["source_year"]),
+        source_year=source_year,
         geometry_bng=geometry_bng,
         geometry_wgs84=geometry_wgs84,
     )
@@ -79,7 +79,7 @@ def _segment_from_wgs84(feature: dict[str, Any]) -> RoadSegment:
 def read_road_segments(path: Path, source_year: int = 2024) -> list[RoadSegment]:
     if path.suffix.lower() in {".geojson", ".json"}:
         payload = json.loads(path.read_text(encoding="utf-8"))
-        segments = [_segment_from_wgs84(feature) for feature in payload["features"]]
+        segments = [_segment_from_wgs84(feature, source_year) for feature in payload["features"]]
     elif path.suffix.lower() == ".shp":
         reader = shapefile.Reader(str(path))
         fields = [field[0] for field in reader.fields[1:]]

@@ -68,3 +68,8 @@ segment-level urban/rural classification. Local authority, road category, road
 type, and traffic estimation method now flow from the official AADF source,
 but urban/rural status needs a separately documented spatial source rather than
 an inference from road category or authority.
+
+`roadsafe build-contract` executes the artifact build for every year declared
+by the contract before invoking the same readiness gate. It is an orchestration
+step only: a blocked report remains the correct outcome until every declared
+source year and subgroup field is present.

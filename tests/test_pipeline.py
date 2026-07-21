@@ -39,6 +39,30 @@ def test_build_pilot_writes_parquet_and_quality_report(tmp_path: Path) -> None:
     assert saved_report["source_year"] == 2024
 
 
+def test_build_pilot_extracts_requested_year_from_historical_source(tmp_path: Path) -> None:
+    historical = tmp_path / "historical.csv"
+    frame = pl.concat(
+        [
+            pl.read_csv(FIXTURE).with_columns(pl.lit(2019).alias("collision_year")),
+            pl.read_csv(FIXTURE).with_columns(pl.lit(2020).alias("collision_year")),
+        ]
+    ).with_columns(
+        (
+            pl.col("collision_index").cast(pl.String)
+            + "-"
+            + pl.col("collision_year").cast(pl.String)
+        ).alias("collision_index")
+    )
+    frame.write_csv(historical)
+
+    report = build_pilot(historical, tmp_path, year=2019)
+
+    assert report["source_records"] == 24
+    assert report["selected_source_records"] == 12
+    assert report["source_year"] == 2019
+    assert (tmp_path / "pilot-collisions-2019.parquet").exists()
+
+
 def test_collision_source_year_rejects_mixed_annual_data() -> None:
     with pytest.raises(DataValidationError, match="exactly one reporting year"):
         collision_source_year(pl.DataFrame({"collision_year": [2023, 2024]}))

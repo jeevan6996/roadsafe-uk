@@ -97,6 +97,12 @@ def test_road_segments_require_unique_count_points(tmp_path: Path) -> None:
         read_road_segments(invalid)
 
 
+def test_geojson_road_segments_use_requested_source_year() -> None:
+    segments = read_road_segments(ROADS, source_year=2023)
+
+    assert {segment.source_year for segment in segments} == {2023}
+
+
 def test_aadf_rejects_missing_contract_columns(tmp_path: Path) -> None:
     invalid = tmp_path / "aadf.csv"
     pl.DataFrame({"count_point_id": [1], "year": [2024]}).write_csv(invalid)
