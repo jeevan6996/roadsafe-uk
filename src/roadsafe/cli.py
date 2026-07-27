@@ -34,6 +34,7 @@ def create_parser() -> argparse.ArgumentParser:
     network.add_argument("--collisions", required=True, type=Path)
     network.add_argument("--roads", required=True, type=Path)
     network.add_argument("--aadf", required=True, type=Path)
+    network.add_argument("--urban-rural", type=Path)
     network.add_argument("--output", required=True, type=Path)
     network.add_argument("--year", default=2024, type=int)
     panel = commands.add_parser(
@@ -70,7 +71,7 @@ def main() -> None:
         print(json.dumps(report, indent=2, sort_keys=True))
     elif args.command == "build-network":
         report = build_network_evidence(
-            args.collisions, args.roads, args.aadf, args.output, args.year
+            args.collisions, args.roads, args.aadf, args.output, args.year, args.urban_rural
         )
         print(json.dumps(report, indent=2, sort_keys=True))
     elif args.command == "build-panel":

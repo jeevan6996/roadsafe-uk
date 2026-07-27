@@ -69,6 +69,10 @@ type, and traffic estimation method now flow from the official AADF source,
 but urban/rural status needs a separately documented spatial source rather than
 an inference from road category or authority.
 
+The network build supports an explicit urban/rural lookup keyed by
+`count_point_id` and `year`. Missing lookup data is represented as null rather
+than inferred, so subgroup readiness remains auditable.
+
 `roadsafe build-contract` executes the artifact build for every year declared
 by the contract before invoking the same readiness gate. It is an orchestration
 step only: a blocked report remains the correct outcome until every declared

@@ -57,6 +57,15 @@ category, road type, link length, vehicle flows, and estimation method retained
 by the annual evidence pipeline. It does not provide the segment-level
 urban/rural field required by the evaluation contract.
 
+## Segment-level urban/rural classification
+
+The network evidence builder accepts an optional year-aligned lookup with
+`count_point_id`, `year`, and `urban_rural` fields. Values are restricted to
+`urban` and `rural`, duplicates are rejected, and coverage is reported in the
+network quality report. Until an authoritative source is selected and supplied,
+the pipeline emits `urban_rural` as null so the evaluation readiness gate keeps
+the missing subgroup visible.
+
 ## OS Open Roads
 
 OS Open Roads is the planned all-roads link-and-node geometry source. It is

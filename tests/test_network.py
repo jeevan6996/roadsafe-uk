@@ -13,6 +13,7 @@ from roadsafe.network import (
     match_collisions,
     read_aadf,
     read_road_segments,
+    read_urban_rural_classification,
 )
 from roadsafe.pipeline import read_collisions
 
@@ -51,6 +52,9 @@ def test_build_network_writes_evidence_and_diagnostics(tmp_path: Path) -> None:
 
     assert report["road_segments"] == 6
     assert report["segments_with_exposure"] == 6
+    assert report["segments_with_urban_rural"] == 0
+    assert report["urban_rural_coverage"] == 0.0
+    assert report["urban_rural_source"] is None
     assert report["accepted_match_rate"] == 0.1667
     assert report["match_status_counts"] == {"accepted": 2, "out_of_range": 10}
     assert report["road_source_sha256"][ROADS.name]
@@ -59,6 +63,7 @@ def test_build_network_writes_evidence_and_diagnostics(tmp_path: Path) -> None:
     assert (tmp_path / "segment-evidence-2024.parquet").exists()
     saved = pl.read_parquet(tmp_path / "segment-evidence-2024.parquet")
     assert saved["segment_key"].n_unique() == 6
+    assert saved["urban_rural"].null_count() == 6
     assert saved["local_authority_name"].unique().to_list() == ["Bradford"]
     geojson = json.loads((tmp_path / "segment-evidence-2024.geojson").read_text())
     assert len(geojson["features"]) == 6
@@ -103,9 +108,51 @@ def test_geojson_road_segments_use_requested_source_year() -> None:
     assert {segment.source_year for segment in segments} == {2023}
 
 
+def test_urban_rural_classification_joins_segment_evidence(tmp_path: Path) -> None:
+    segments = read_road_segments(ROADS)
+    lookup = tmp_path / "urban-rural.csv"
+    pl.DataFrame(
+        {
+            "count_point_id": [segment.count_point_id for segment in segments],
+            "year": [2024 for _ in segments],
+            "urban_rural": ["urban", "urban", "rural", "rural", "urban", "rural"],
+        }
+    ).write_csv(lookup)
+
+    report = build_network_evidence(COLLISIONS, ROADS, AADF, tmp_path, urban_rural_path=lookup)
+    saved = pl.read_parquet(tmp_path / "segment-evidence-2024.parquet")
+
+    assert report["segments_with_urban_rural"] == 6
+    assert report["urban_rural_coverage"] == 1.0
+    assert report["urban_rural_counts"] == {"rural": 3, "urban": 3}
+    assert set(saved["urban_rural"]) == {"urban", "rural"}
+
+
+def test_urban_rural_classification_rejects_invalid_values(tmp_path: Path) -> None:
+    lookup = tmp_path / "urban-rural.csv"
+    pl.DataFrame(
+        {
+            "count_point_id": [1],
+            "year": [2024],
+            "urban_rural": ["suburban"],
+        }
+    ).write_csv(lookup)
+
+    with pytest.raises(NetworkValidationError, match="Invalid urban/rural values"):
+        read_urban_rural_classification(lookup, {1})
+
+
 def test_aadf_rejects_missing_contract_columns(tmp_path: Path) -> None:
     invalid = tmp_path / "aadf.csv"
     pl.DataFrame({"count_point_id": [1], "year": [2024]}).write_csv(invalid)
 
     with pytest.raises(NetworkValidationError, match="Missing AADF columns"):
         read_aadf(invalid, {1})
+
+
+def test_urban_rural_classification_rejects_missing_columns(tmp_path: Path) -> None:
+    invalid = tmp_path / "urban-rural.csv"
+    pl.DataFrame({"count_point_id": [1], "year": [2024]}).write_csv(invalid)
+
+    with pytest.raises(NetworkValidationError, match="Missing urban/rural columns"):
+        read_urban_rural_classification(invalid, {1})

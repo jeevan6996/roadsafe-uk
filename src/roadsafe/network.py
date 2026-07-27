@@ -43,6 +43,8 @@ AADF_REQUIRED_COLUMNS = {
     "all_HGVs",
     "link_length_km",
 }
+URBAN_RURAL_REQUIRED_COLUMNS = {"count_point_id", "year", "urban_rural"}
+URBAN_RURAL_VALUES = {"urban", "rural"}
 
 TO_BNG = Transformer.from_crs("EPSG:4326", "EPSG:27700", always_xy=True)
 TO_WGS84 = Transformer.from_crs("EPSG:27700", "EPSG:4326", always_xy=True)
@@ -144,6 +146,36 @@ def read_aadf(path: Path, count_point_ids: set[int], year: int = 2024) -> pl.Dat
     return frame
 
 
+def read_urban_rural_classification(
+    path: Path, count_point_ids: set[int], year: int = 2024
+) -> pl.DataFrame:
+    columns = pl.read_csv(path, n_rows=0).columns
+    missing = URBAN_RURAL_REQUIRED_COLUMNS.difference(columns)
+    if missing:
+        raise NetworkValidationError(f"Missing urban/rural columns: {', '.join(sorted(missing))}")
+    frame = (
+        pl.read_csv(
+            path,
+            columns=sorted(URBAN_RURAL_REQUIRED_COLUMNS),
+            infer_schema_length=10_000,
+            null_values=["", "NA"],
+        )
+        .filter((pl.col("year") == year) & pl.col("count_point_id").is_in(count_point_ids))
+        .with_columns(pl.col("urban_rural").str.to_lowercase())
+        .select(["count_point_id", "urban_rural"])
+    )
+    if frame.select(pl.col("count_point_id").is_duplicated().sum()).item():
+        raise NetworkValidationError("Urban/rural classification has duplicate count points")
+    invalid_values = sorted(
+        set(frame["urban_rural"].drop_nulls().unique().to_list()).difference(URBAN_RURAL_VALUES)
+    )
+    if invalid_values:
+        raise NetworkValidationError(
+            f"Invalid urban/rural values: {', '.join(str(value) for value in invalid_values)}"
+        )
+    return frame
+
+
 def match_collisions(
     collisions: pl.DataFrame,
     segments: list[RoadSegment],
@@ -238,6 +270,7 @@ def build_network_evidence(
     aadf_path: Path,
     output: Path,
     year: int = 2024,
+    urban_rural_path: Path | None = None,
 ) -> dict[str, Any]:
     collisions = (
         pl.read_parquet(collision_path)
@@ -250,7 +283,13 @@ def build_network_evidence(
             f"Collision reporting years {sorted(collision_years)} do not match network year {year}"
         )
     segments = read_road_segments(road_path, source_year=year)
-    aadf = read_aadf(aadf_path, {segment.count_point_id for segment in segments}, year)
+    count_point_ids = {segment.count_point_id for segment in segments}
+    aadf = read_aadf(aadf_path, count_point_ids, year)
+    urban_rural = (
+        read_urban_rural_classification(urban_rural_path, count_point_ids, year)
+        if urban_rural_path is not None
+        else None
+    )
     matches = match_collisions(collisions, segments)
 
     accepted = (
@@ -269,7 +308,14 @@ def build_network_evidence(
     evidence = (
         _segment_frame(segments)
         .join(aadf, on="count_point_id", how="left")
-        .join(accepted, on="segment_id", how="left")
+        .join(urban_rural, on="count_point_id", how="left")
+        if urban_rural is not None
+        else _segment_frame(segments)
+        .join(aadf, on="count_point_id", how="left")
+        .with_columns(pl.lit(None).cast(pl.String).alias("urban_rural"))
+    )
+    evidence = (
+        evidence.join(accepted, on="segment_id", how="left")
         .with_columns(
             pl.col("collision_count").fill_null(0),
             pl.col("ksi_count").fill_null(0),
@@ -315,6 +361,10 @@ def build_network_evidence(
         row["estimation_method"]: row["len"]
         for row in aadf.group_by("estimation_method").len().to_dicts()
     }
+    urban_rural_counts = {
+        row["urban_rural"]: row["len"]
+        for row in evidence.drop_nulls("urban_rural").group_by("urban_rural").len().to_dicts()
+    }
     report: dict[str, Any] = {
         "generated_at": datetime.now(UTC).isoformat(),
         "source_year": year,
@@ -322,15 +372,22 @@ def build_network_evidence(
         "road_source_sha256": _road_source_hashes(road_path),
         "exposure_source": AADF_URL,
         "exposure_source_sha256": sha256_file(aadf_path),
+        "urban_rural_source": str(urban_rural_path) if urban_rural_path is not None else None,
+        "urban_rural_source_sha256": (
+            sha256_file(urban_rural_path) if urban_rural_path is not None else None
+        ),
         "road_segments": len(segments),
         "segments_with_exposure": aadf.height,
         "exposure_coverage": round(aadf.height / len(segments), 4),
+        "segments_with_urban_rural": evidence.drop_nulls("urban_rural").height,
+        "urban_rural_coverage": round(evidence.drop_nulls("urban_rural").height / len(segments), 4),
         "collision_records": collisions.height,
         "match_status_counts": statuses,
         "accepted_match_rate": round(statuses.get("accepted", 0) / collisions.height, 4),
         "max_match_distance_metres": MAX_MATCH_DISTANCE_METRES,
         "ambiguity_margin_metres": AMBIGUITY_MARGIN_METRES,
         "aadf_estimation_methods": method_counts,
+        "urban_rural_counts": urban_rural_counts,
         "local_authorities": sorted(evidence["local_authority_code"].drop_nulls().unique()),
         "rate_scale_vehicle_km": RATE_SCALE,
         "outputs": {
