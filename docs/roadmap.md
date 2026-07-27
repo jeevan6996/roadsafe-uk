@@ -17,6 +17,7 @@
 
 - completed: stable count-point identity and authority/road-class metadata
 - completed: longitudinal panel builder and evaluation-readiness report
+- completed: auditable readiness score and check-level blockers
 - completed: atomic official-source acquisition with provenance manifests
 - completed: contract-level annual evidence orchestration command
 - next: ingest and match annual 2019–2023 collision/network evidence

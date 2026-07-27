@@ -82,6 +82,8 @@ def test_build_segment_year_panel_is_ready_for_complete_contract(tmp_path: Path)
     assert report["available_years"] == list(range(2019, 2025))
     assert report["segments_with_complete_history"] == 2
     assert report["blockers"] == []
+    assert report["readiness_score"] == 1.0
+    assert all(report["readiness_checks"].values())
     assert (output / "segment-year-panel.parquet").exists()
     assert (output / "panel-readiness-report.json").exists()
 
@@ -95,6 +97,9 @@ def test_panel_readiness_reports_missing_years_and_subgroups() -> None:
     assert readiness["missing_years"] == [2019, 2020, 2021, 2022, 2023]
     assert readiness["missing_subgroups"] == ["urban_rural"]
     assert readiness["blockers"] == ["missing_contract_years", "missing_subgroup_fields"]
+    assert readiness["readiness_score"] < 1.0
+    assert readiness["readiness_checks"]["contract_years_available"] is False
+    assert readiness["readiness_checks"]["required_subgroups_available"] is False
 
 
 def test_panel_readiness_blocks_partial_subgroup_coverage() -> None:
@@ -141,6 +146,8 @@ def test_panel_readiness_blocks_invalid_exposure_and_target() -> None:
     assert readiness["invalid_target_rows"] == 1
     assert "invalid_exposure_rows" in readiness["blockers"]
     assert "invalid_target_rows" in readiness["blockers"]
+    assert readiness["readiness_checks"]["exposure_values_valid"] is False
+    assert readiness["readiness_checks"]["target_values_valid"] is False
 
 
 def test_build_segment_year_panel_requires_inputs(tmp_path: Path) -> None:

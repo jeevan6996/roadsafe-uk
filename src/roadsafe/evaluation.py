@@ -123,9 +123,20 @@ def assess_panel_readiness(panel: pl.DataFrame, contract: EvaluationContract) ->
         blockers.append("invalid_exposure_rows")
     if invalid_target:
         blockers.append("invalid_target_rows")
+    readiness_checks = {
+        "contract_years_available": not missing_years,
+        "required_subgroups_available": not missing_subgroups,
+        "subgroup_values_complete": not incomplete_subgroup_rows,
+        "geographic_holdout_possible": geographic_groups >= 2,
+        "exposure_values_valid": invalid_exposure == 0,
+        "target_values_valid": invalid_target == 0,
+    }
+    passed_checks = sum(readiness_checks.values())
     return {
         "status": "ready-for-evaluation" if not blockers else "blocked",
         "blockers": blockers,
+        "readiness_score": passed_checks / len(readiness_checks),
+        "readiness_checks": readiness_checks,
         "required_years": required_years,
         "available_years": available_years,
         "missing_years": missing_years,
