@@ -12,6 +12,7 @@ from roadsafe.evaluation import build_segment_year_panel
 from roadsafe.network import build_network_evidence
 from roadsafe.orchestration import build_contract_evidence
 from roadsafe.pipeline import build_pilot
+from roadsafe.screening import build_descriptive_screening
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -43,6 +44,12 @@ def create_parser() -> argparse.ArgumentParser:
     panel.add_argument("--evidence", required=True, nargs="+", type=Path)
     panel.add_argument("--contract", required=True, type=Path)
     panel.add_argument("--output", required=True, type=Path)
+    screening = commands.add_parser(
+        "build-screening",
+        help="Build observed exposure-normalized descriptive screening artifacts",
+    )
+    screening.add_argument("--panel", required=True, type=Path)
+    screening.add_argument("--output", required=True, type=Path)
     contract = commands.add_parser(
         "build-contract", help="Build annual evidence for every year in an evaluation contract"
     )
@@ -76,6 +83,9 @@ def main() -> None:
         print(json.dumps(report, indent=2, sort_keys=True))
     elif args.command == "build-panel":
         report = build_segment_year_panel(args.evidence, args.contract, args.output)
+        print(json.dumps(report, indent=2, sort_keys=True))
+    elif args.command == "build-screening":
+        report = build_descriptive_screening(args.panel, args.output)
         print(json.dumps(report, indent=2, sort_keys=True))
     elif args.command == "build-contract":
         report = build_contract_evidence(

@@ -20,8 +20,9 @@
 - completed: auditable readiness score and check-level blockers
 - completed: atomic official-source acquisition with provenance manifests
 - completed: contract-level annual evidence orchestration command
+- completed: observed exposure-normalized descriptive screening report
 - next: ingest and match annual 2019–2023 collision/network evidence
-- next: join authoritative segment-level urban/rural classification
+- next: collect authoritative urban/rural classification for all contract years
 - negative-binomial Safety Performance Function
 - Empirical Bayes expected frequency and excess-frequency estimates
 - temporal and geographic backtests with uncertainty intervals

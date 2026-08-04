@@ -141,6 +141,19 @@ exposure and targets, unique segment-year records, and complete subgroup
 fields. The current 2024 pilot is correctly reported as blocked: 2019–2023
 and a defensible segment-level urban/rural classification are still missing.
 
+Build an observed, exposure-normalized screening artifact from a ready panel:
+
+```bash
+roadsafe build-screening \
+  --panel data/processed/segment-year-panel.parquet \
+  --output data/processed
+```
+
+This writes `segment-descriptive-screening.parquet` and
+`descriptive-screening-report.json`. The output ranks observed rates per
+million vehicle-km and subgroup summaries only; it is not an expected-frequency
+or causal model.
+
 To run the full contract workflow from source templates, use:
 
 ```bash
