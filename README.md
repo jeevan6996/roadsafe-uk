@@ -34,6 +34,7 @@ road-network graph models.
 - contract-aware segment-year panel construction with explicit readiness blockers
 - contract-level annual evidence orchestration across all evaluation years
 - observed screening stability labels and a transparent Poisson rate standard-error proxy
+- transparent exposure-rate baseline with validation/test evaluation metrics
 - versioned FastAPI endpoints for collision and major-road evidence
 - React and MapLibre observed/exposure investigation modes
 - future-year and grouped-authority evaluation contract
@@ -156,6 +157,19 @@ million vehicle-km and subgroup summaries only; it also labels low-count or
 low-exposure estimates for cautious interpretation and includes a simple
 Poisson rate standard-error proxy. It is not an expected-frequency or causal
 model.
+
+Evaluate the first model baseline after building a complete panel:
+
+```bash
+roadsafe build-baseline \
+  --panel data/processed/segment-year-panel.parquet \
+  --contract configs/evaluation-v1.json \
+  --output data/processed/baseline
+```
+
+This estimates one KSI rate from training years, applies the annual vehicle-km
+exposure offset, and reports validation/test MAE and RMSE. It is a transparent
+benchmark for later Safety Performance Functions, not a deployment model.
 
 To run the full contract workflow from source templates, use:
 

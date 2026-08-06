@@ -8,6 +8,7 @@ from roadsafe.acquisition import (
     SourceKind,
     acquire_sources,
 )
+from roadsafe.baseline import BaselineValidationError, build_exposure_baseline
 from roadsafe.evaluation import build_segment_year_panel
 from roadsafe.network import build_network_evidence
 from roadsafe.orchestration import build_contract_evidence
@@ -50,6 +51,12 @@ def create_parser() -> argparse.ArgumentParser:
     )
     screening.add_argument("--panel", required=True, type=Path)
     screening.add_argument("--output", required=True, type=Path)
+    baseline = commands.add_parser(
+        "build-baseline", help="Evaluate the transparent exposure-rate baseline"
+    )
+    baseline.add_argument("--panel", required=True, type=Path)
+    baseline.add_argument("--contract", required=True, type=Path)
+    baseline.add_argument("--output", required=True, type=Path)
     contract = commands.add_parser(
         "build-contract", help="Build annual evidence for every year in an evaluation contract"
     )
@@ -86,6 +93,12 @@ def main() -> None:
         print(json.dumps(report, indent=2, sort_keys=True))
     elif args.command == "build-screening":
         report = build_descriptive_screening(args.panel, args.output)
+        print(json.dumps(report, indent=2, sort_keys=True))
+    elif args.command == "build-baseline":
+        try:
+            report = build_exposure_baseline(args.panel, args.contract, args.output)
+        except BaselineValidationError as error:
+            parser.error(str(error))
         print(json.dumps(report, indent=2, sort_keys=True))
     elif args.command == "build-contract":
         report = build_contract_evidence(
