@@ -33,6 +33,7 @@ road-network graph models.
 - segment evidence in Parquet and GeoJSON
 - contract-aware segment-year panel construction with explicit readiness blockers
 - contract-level annual evidence orchestration across all evaluation years
+- observed screening stability labels and a transparent Poisson rate standard-error proxy
 - versioned FastAPI endpoints for collision and major-road evidence
 - React and MapLibre observed/exposure investigation modes
 - future-year and grouped-authority evaluation contract
@@ -151,8 +152,10 @@ roadsafe build-screening \
 
 This writes `segment-descriptive-screening.parquet` and
 `descriptive-screening-report.json`. The output ranks observed rates per
-million vehicle-km and subgroup summaries only; it is not an expected-frequency
-or causal model.
+million vehicle-km and subgroup summaries only; it also labels low-count or
+low-exposure estimates for cautious interpretation and includes a simple
+Poisson rate standard-error proxy. It is not an expected-frequency or causal
+model.
 
 To run the full contract workflow from source templates, use:
 

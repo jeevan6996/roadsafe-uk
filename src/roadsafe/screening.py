@@ -104,6 +104,15 @@ def _segment_screening(panel: pl.DataFrame) -> pl.DataFrame:
                 "ksi_rate_per_million_vehicle_km"
             ),
         )
+        .with_columns(
+            (
+                pl.col("observed_ksi").cast(pl.Float64).sqrt() / pl.col("total_million_vehicle_km")
+            ).alias("ksi_rate_standard_error_proxy"),
+            pl.when((pl.col("observed_ksi") >= 5) & (pl.col("total_million_vehicle_km") >= 1))
+            .then(pl.lit("more_stable_for_screening"))
+            .otherwise(pl.lit("interpret_with_caution"))
+            .alias("screening_stability"),
+        )
         .sort(
             ["ksi_rate_per_million_vehicle_km", "collision_rate_per_million_vehicle_km"],
             descending=[True, True],

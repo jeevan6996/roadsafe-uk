@@ -21,6 +21,7 @@
 - completed: atomic official-source acquisition with provenance manifests
 - completed: contract-level annual evidence orchestration command
 - completed: observed exposure-normalized descriptive screening report
+- completed: screening stability labels and transparent rate standard-error proxy
 - next: ingest and match annual 2019–2023 collision/network evidence
 - next: collect authoritative urban/rural classification for all contract years
 - negative-binomial Safety Performance Function

@@ -36,6 +36,8 @@ def test_descriptive_screening_exports_ranked_observed_rates(tmp_path: Path) -> 
     assert report["years"] == [2022, 2023]
     assert screening["segment_key"].to_list() == ["dft-count-point-2", "dft-count-point-1"]
     assert screening["ksi_rate_per_million_vehicle_km"].to_list() == [2.0, 0.5]
+    assert screening["screening_stability"].to_list() == ["interpret_with_caution"] * 2
+    assert screening["ksi_rate_standard_error_proxy"].to_list() == [2.0, 0.5]
     assert (tmp_path / "out" / "descriptive-screening-report.json").exists()
     assert "urban_rural" in report["subgroup_rates"]
 
