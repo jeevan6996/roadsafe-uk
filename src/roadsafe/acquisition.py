@@ -54,6 +54,7 @@ class SourceSpec:
     licence: str = "Open Government Licence v3.0"
     licence_url: str = OGL_URL
     requested_year: int | None = None
+    requested_years: tuple[int, ...] = ()
     year_validation: YearValidation | None = None
 
 
@@ -73,36 +74,39 @@ def source_specs(years: list[int], kinds: set[SourceKind] | None = None) -> list
         raise AcquisitionError(f"Unsupported or non-final reporting years: {values}")
 
     specs: list[SourceSpec] = []
-    for year in requested_years:
-        if "collision" in selected_kinds:
-            is_historical_source = year == 2019
+    if "collision" in selected_kinds:
+        historical_years = tuple(year for year in requested_years if year in (2019, 2020))
+        if historical_years:
             specs.append(
                 SourceSpec(
-                    source_id=(
-                        "dft-stats19-collision-history"
-                        if is_historical_source
-                        else f"dft-stats19-collision-{year}"
-                    ),
+                    source_id="dft-stats19-collision-history",
                     kind="collision",
-                    url=(
-                        COLLISION_HISTORY_URL
-                        if is_historical_source
-                        else COLLISION_URL_TEMPLATE.format(year=year)
-                    ),
+                    url=COLLISION_HISTORY_URL,
                     source_page=SOURCE_PAGE_URL,
-                    filename=(
-                        "dft-road-casualty-statistics-collision-1979-latest-published-year.csv"
-                        if is_historical_source
-                        else f"dft-road-casualty-statistics-collision-{year}.csv"
-                    ),
-                    reporting_period=(
-                        "1979-latest-published-year" if is_historical_source else str(year)
-                    ),
+                    filename="dft-road-casualty-statistics-collision-1979-latest-published-year.csv",
+                    reporting_period="1979-latest-published-year",
                     publication_status="final",
-                    requested_year=year,
-                    year_validation="contains" if is_historical_source else "exact",
+                    requested_year=historical_years[0],
+                    requested_years=historical_years,
+                    year_validation="contains",
                 )
             )
+        for year in (year for year in requested_years if year not in (2019, 2020)):
+            specs.append(
+                SourceSpec(
+                    source_id=f"dft-stats19-collision-{year}",
+                    kind="collision",
+                    url=COLLISION_URL_TEMPLATE.format(year=year),
+                    source_page=SOURCE_PAGE_URL,
+                    filename=f"dft-road-casualty-statistics-collision-{year}.csv",
+                    reporting_period=str(year),
+                    publication_status="final",
+                    requested_year=year,
+                    requested_years=(year,),
+                    year_validation="exact",
+                )
+            )
+    for year in requested_years:
         if "roads" in selected_kinds:
             specs.append(
                 SourceSpec(
@@ -113,6 +117,7 @@ def source_specs(years: list[int], kinds: set[SourceKind] | None = None) -> list
                     filename=f"mrdb-{year}.zip",
                     reporting_period=str(year),
                     requested_year=year,
+                    requested_years=(year,),
                 )
             )
     if "aadf" in selected_kinds:
@@ -148,13 +153,25 @@ def _cached_manifest(spec: SourceSpec, target: Path) -> dict[str, Any] | None:
     artifact = manifest.get("artifact")
     if not isinstance(source, dict) or not isinstance(artifact, dict):
         return None
-    if manifest.get("schema_version") != 1 or source != asdict(spec):
+    if manifest.get("schema_version") != 1 or source != _source_payload(spec):
         return None
     if artifact.get("bytes") != target.stat().st_size:
         return None
     if artifact.get("sha256") != sha256_file(target):
         return None
     return manifest
+
+
+def _source_payload(spec: SourceSpec) -> dict[str, Any]:
+    payload = asdict(spec)
+    payload["requested_years"] = list(spec.requested_years)
+    return payload
+
+
+def _requested_years(spec: SourceSpec) -> tuple[int, ...]:
+    return spec.requested_years or (
+        (spec.requested_year,) if spec.requested_year is not None else ()
+    )
 
 
 def _validate_archive(path: Path, kind: SourceKind) -> dict[str, Any]:
@@ -197,11 +214,11 @@ def _validate_source(spec: SourceSpec, path: Path) -> dict[str, Any]:
                 raise AcquisitionError(str(error)) from error
             valid_year = actual_year == spec.requested_year
         else:
-            valid_year = spec.requested_year in available_years
+            valid_year = set(_requested_years(spec)).issubset(available_years)
         if not valid_year:
             message = (
                 "Downloaded collision years do not contain the requested year "
-                f"{spec.requested_year}"
+                f"{', '.join(str(year) for year in _requested_years(spec))}"
             )
             raise AcquisitionError(message)
         return {
@@ -209,6 +226,7 @@ def _validate_source(spec: SourceSpec, path: Path) -> dict[str, Any]:
             "available_year_min": min(available_years),
             "available_year_max": max(available_years),
             "requested_year": spec.requested_year,
+            "requested_years": list(_requested_years(spec)),
             "year_validation": spec.year_validation,
         }
     return _validate_archive(path, spec.kind)
@@ -272,7 +290,7 @@ def acquire_source(spec: SourceSpec, output: Path, refresh: bool = False) -> dic
         manifest: dict[str, Any] = {
             "schema_version": 1,
             "retrieved_at": datetime.now(UTC).isoformat(),
-            "source": asdict(spec),
+            "source": _source_payload(spec),
             "artifact": artifact,
             "validation": validation,
         }

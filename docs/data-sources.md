@@ -31,10 +31,12 @@ are promoted only after content validation. A local artifact is reused only
 when its URL, size, and SHA-256 still agree with its manifest. The catalogue
 deliberately excludes provisional years from the modelling panel.
 
-The current DfT page offers standalone final collision files for 2020–2024.
-The 2019 input is therefore acquired from the official 1979–latest collision
-file and validated by confirming that 2019 is present. This source is much
-larger than the annual files and is not represented as an annual-only asset.
+The current DfT page does not list a standalone final 2020 collision file.
+The 2019 and 2020 inputs are therefore acquired from the official 1979–latest
+collision file and validated by confirming that both requested years are
+present. This source is much larger than the annual files and is represented
+as one shared historical asset so the same download is not duplicated or
+silently overwritten.
 
 ## DfT Major Roads Database
 

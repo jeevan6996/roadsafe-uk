@@ -53,7 +53,20 @@ def test_source_catalog_is_explicit_and_deduplicates_shared_aadf() -> None:
         spec for spec in specs if spec.requested_year == 2019 and spec.kind == "collision"
     )
     assert historical.reporting_period == "1979-latest-published-year"
+    assert historical.requested_years == (2019,)
     assert historical.year_validation == "contains"
+
+
+def test_historical_collision_source_is_shared_by_2019_and_2020() -> None:
+    specs = source_specs([2019, 2020, 2021], {"collision"})
+
+    assert len(specs) == 2
+    historical, annual = specs
+    assert historical.filename == (
+        "dft-road-casualty-statistics-collision-1979-latest-published-year.csv"
+    )
+    assert historical.requested_years == (2019, 2020)
+    assert annual.requested_years == (2021,)
 
 
 @pytest.mark.parametrize("years", [[], [2018], [2025]])
@@ -89,6 +102,7 @@ def test_acquisition_writes_manifest_and_uses_verified_cache(
         "available_year_min": 2023,
         "collision_records": 2,
         "requested_year": 2023,
+        "requested_years": [2023],
         "year_validation": "exact",
     }
     assert second["status"] == "cached"
@@ -151,8 +165,23 @@ def test_historical_collision_source_accepts_requested_year_among_multiple_years
     result = acquire_source(spec, tmp_path)
 
     assert result["validation"]["requested_year"] == 2019
+    assert result["validation"]["requested_years"] == [2019]
     assert result["validation"]["available_year_min"] == 2018
     assert result["validation"]["available_year_max"] == 2020
+
+
+def test_historical_collision_source_requires_all_requested_years(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        acquisition.request,
+        "urlopen",
+        lambda source_request, timeout: FakeResponse(collision_csv(2019)),
+    )
+    spec = source_specs([2019, 2020], {"collision"})[0]
+
+    with pytest.raises(AcquisitionError, match="2019, 2020"):
+        acquire_source(spec, tmp_path)
 
 
 def test_acquisition_validates_road_and_aadf_archive_members(
