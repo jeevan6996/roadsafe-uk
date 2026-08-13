@@ -69,6 +69,11 @@ type, and traffic estimation method now flow from the official AADF source,
 but urban/rural status needs a separately documented spatial source rather than
 an inference from road category or authority.
 
+The exposure-rate baseline applies the same exposure and target validation to
+training, validation, and test rows. Invalid scoring rows are rejected before
+metrics are calculated, rather than allowing missing or negative values to
+produce misleading errors or undefined results.
+
 The network build supports an explicit urban/rural lookup keyed by
 `count_point_id` and `year`. Missing lookup data is represented as null rather
 than inferred, so subgroup readiness remains auditable.

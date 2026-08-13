@@ -62,3 +62,19 @@ def test_build_exposure_baseline_rejects_missing_training_rows(tmp_path: Path) -
 
     with pytest.raises(BaselineValidationError, match="training years contain no panel rows"):
         build_exposure_baseline(panel_path, contract_path(tmp_path), tmp_path / "out")
+
+
+def test_build_exposure_baseline_rejects_invalid_scoring_rows(tmp_path: Path) -> None:
+    panel_path = tmp_path / "panel.parquet"
+    panel_frame().with_columns(
+        pl.when(pl.col("year") == 2021)
+        .then(0.0)
+        .otherwise(pl.col("annual_vehicle_km"))
+        .alias("annual_vehicle_km")
+    ).write_parquet(panel_path)
+
+    with pytest.raises(
+        BaselineValidationError,
+        match="validation and test years contain 2 invalid rows",
+    ):
+        build_exposure_baseline(panel_path, contract_path(tmp_path), tmp_path / "out")

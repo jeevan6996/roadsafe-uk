@@ -46,6 +46,17 @@ def build_exposure_baseline(panel_path: Path, contract_path: Path, output: Path)
     if invalid:
         raise BaselineValidationError(f"training years contain {invalid} invalid rows")
 
+    invalid_scoring = scoring.filter(
+        pl.col("annual_vehicle_km").is_null()
+        | (pl.col("annual_vehicle_km") <= 0)
+        | pl.col("ksi_count").is_null()
+        | (pl.col("ksi_count") < 0)
+    ).height
+    if invalid_scoring:
+        raise BaselineValidationError(
+            f"validation and test years contain {invalid_scoring} invalid rows"
+        )
+
     total_exposure_mvk = float(training["annual_vehicle_km"].sum()) / 1_000_000
     total_ksi = float(training["ksi_count"].sum())
     if not total_exposure_mvk or total_exposure_mvk <= 0:
