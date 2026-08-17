@@ -15,11 +15,11 @@ Source: <https://www.gov.uk/government/statistical-data-sets/road-safety-open-da
 
 Licence: Open Government Licence v3.0.
 
-## Planned enrichment
+## Enrichment sources
 
 - OS Open Roads geometry and network identifiers
 - official local-authority boundaries
-- segment-level urban/rural classification from an authoritative spatial source
+- segment-level urban/rural classification from the official 2011 small-area lookup
 
 Every downloaded file will receive a manifest containing source URL, retrieval
 time, checksum, publication status, reporting period, and licence.
@@ -59,14 +59,25 @@ category, road type, link length, vehicle flows, and estimation method retained
 by the annual evidence pipeline. It does not provide the segment-level
 urban/rural field required by the evaluation contract.
 
+The current rural/urban enrichment uses the Defra/ONS 2011 lookup table for
+small-area geographies and the ONS 2011 Output Area boundaries. The lookup is
+downloaded from <https://www.gov.uk/government/statistics/2011-rural-urban-classification-lookup-tables-for-all-geographies>;
+the boundary feature service is documented in the National Data Catalogue at
+<https://www.data.gov.uk/dataset/0cb10c35-431c-4cbe-94fb-259ac3392b66/output-areas-december-2011-boundaries-ew-bgc-v21>.
+The generated local lookup is reproducible with
+`scripts/build_rural_lookup.py` and is intentionally ignored with other
+derived data artifacts.
+
 ## Segment-level urban/rural classification
 
 The network evidence builder accepts an optional year-aligned lookup with
 `count_point_id`, `year`, and `urban_rural` fields. Values are restricted to
 `urban` and `rural`, duplicates are rejected, and coverage is reported in the
-network quality report. Until an authoritative source is selected and supplied,
-the pipeline emits `urban_rural` as null so the evaluation readiness gate keeps
-the missing subgroup visible.
+network quality report. The RoadSafe contract build uses the official 2011
+Rural Urban Classification lookup for small-area geographies, joined to the
+official ONS 2011 Output Area boundaries in the pilot extent. The classification
+is static and is recorded against each 2019--2024 reporting year; it must not be
+interpreted as an annual classification update.
 
 ## OS Open Roads
 

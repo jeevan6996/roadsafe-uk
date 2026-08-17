@@ -23,8 +23,9 @@
 - completed: observed exposure-normalized descriptive screening report
 - completed: screening stability labels and transparent rate standard-error proxy
 - completed: exposure-rate baseline with validation/test metrics
-- next: ingest and match annual 2019–2023 collision/network evidence
-- next: collect authoritative urban/rural classification for all contract years
+- completed: ingest and match annual 2019–2024 collision/network evidence
+- completed: join authoritative 2011 urban/rural classification for all contract years
+- next: run statistical screening and model baselines on the ready panel
 - negative-binomial Safety Performance Function
 - Empirical Bayes expected frequency and excess-frequency estimates
 - temporal and geographic backtests with uncertainty intervals

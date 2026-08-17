@@ -63,11 +63,10 @@ Before any baseline or model is fit, it reports:
 - fewer than two local-authority groups for geographic holdout
 - the number of segments with complete contract-period history
 
-The current 2024 artifact fails this gate by design. It lacks 2019–2023 and
-segment-level urban/rural classification. Local authority, road category, road
-type, and traffic estimation method now flow from the official AADF source,
-but urban/rural status needs a separately documented spatial source rather than
-an inference from road category or authority.
+The current 2019–2024 artifact passes this gate. Local authority, road
+category, road type, and traffic estimation method flow from the official AADF
+source. Urban/rural status is joined from the documented ONS/Defra small-area
+source rather than inferred from road category or authority.
 
 The exposure-rate baseline applies the same exposure and target validation to
 training, validation, and test rows. Invalid scoring rows are rejected before

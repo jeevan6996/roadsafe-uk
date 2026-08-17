@@ -82,10 +82,11 @@ def test_build_contract_evidence_uses_historical_source_for_2019(tmp_path: Path)
     raw.mkdir()
     history = raw / "collision-history.csv"
     history_frame = pl.concat(
-        [
-            pl.read_csv(COLLISIONS).with_columns(pl.lit(2018).alias("collision_year")),
-            pl.read_csv(COLLISIONS).with_columns(pl.lit(2019).alias("collision_year")),
-        ]
+            [
+                pl.read_csv(COLLISIONS).with_columns(pl.lit(2018).alias("collision_year")),
+                pl.read_csv(COLLISIONS).with_columns(pl.lit(2019).alias("collision_year")),
+                pl.read_csv(COLLISIONS).with_columns(pl.lit(2020).alias("collision_year")),
+            ]
     ).with_columns(
         (
             pl.col("collision_index").cast(pl.String)
@@ -95,7 +96,7 @@ def test_build_contract_evidence_uses_historical_source_for_2019(tmp_path: Path)
     )
     history_frame.write_csv(history)
     for year in (2019, 2020, 2021):
-        if year != 2019:
+        if year not in (2019, 2020):
             write_collision_source(raw / f"collision-{year}.csv", year)
         (raw / f"roads-{year}.geojson").write_text(ROADS.read_text(encoding="utf-8"))
     aadf = raw / "aadf.csv"
@@ -135,3 +136,6 @@ def test_build_contract_evidence_uses_historical_source_for_2019(tmp_path: Path)
     assert first["year"] == 2019
     assert first["collision_source"] == str(history)
     assert first["pilot"]["selected_source_records"] == 12
+    second = report["annual_reports"][1]
+    assert second["year"] == 2020
+    assert second["collision_source"] == str(history)

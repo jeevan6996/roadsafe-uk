@@ -64,6 +64,7 @@ def create_parser() -> argparse.ArgumentParser:
     contract.add_argument("--historical-collision-source", type=Path)
     contract.add_argument("--road-template", required=True)
     contract.add_argument("--aadf", required=True, type=Path)
+    contract.add_argument("--urban-rural", type=Path)
     contract.add_argument("--contract", required=True, type=Path)
     contract.add_argument("--output", required=True, type=Path)
     return parser
@@ -108,6 +109,7 @@ def main() -> None:
             args.contract,
             args.output,
             args.historical_collision_source,
+            args.urban_rural,
         )
         print(json.dumps(report, indent=2, sort_keys=True))
 

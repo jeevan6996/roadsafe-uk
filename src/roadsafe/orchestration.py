@@ -31,6 +31,7 @@ def build_contract_evidence(
     contract: Path,
     output: Path,
     historical_collision_source: Path | None = None,
+    urban_rural_path: Path | None = None,
 ) -> dict[str, Any]:
     years = contract_years(contract)
     annual_reports: list[dict[str, Any]] = []
@@ -38,13 +39,18 @@ def build_contract_evidence(
     for year in years:
         collision_source = (
             historical_collision_source
-            if historical_collision_source is not None and year == 2019
+            if historical_collision_source is not None and year in {2019, 2020}
             else format_year_path(collision_template, year)
         )
         pilot_report = build_pilot(collision_source, output, year)
         pilot_path = Path(str(pilot_report["output"]))
         network_report = build_network_evidence(
-            pilot_path, format_year_path(road_template, year), aadf, output, year
+            pilot_path,
+            format_year_path(road_template, year),
+            aadf,
+            output,
+            year,
+            urban_rural_path,
         )
         outputs = network_report["outputs"]
         evidence_path = Path(str(outputs["evidence"]))

@@ -140,8 +140,8 @@ roadsafe build-panel \
 This writes `segment-year-panel.parquet` and
 `panel-readiness-report.json`. Readiness requires all declared years, valid
 exposure and targets, unique segment-year records, and complete subgroup
-fields. The current 2024 pilot is correctly reported as blocked: 2019–2023
-and a defensible segment-level urban/rural classification are still missing.
+fields. The 2019–2024 contract panel is now ready for evaluation; modelling
+must still respect the documented descriptive-exposure limitations.
 
 Build an observed, exposure-normalized screening artifact from a ready panel:
 
@@ -180,14 +180,17 @@ roadsafe build-contract \
     data/raw/dft-road-casualty-statistics-collision-1979-latest-published-year.csv \
   --road-template 'data/raw/MRDB_{year}_published.shp' \
   --aadf data/raw/dft_traffic_counts_aadf.csv \
+  --urban-rural data/processed/urban-rural-2019-2024.csv \
   --contract configs/evaluation-v1.json \
   --output data/processed
 ```
 
 The command extracts each required reporting year, builds the annual pilot and
 network evidence artifacts, and then runs the panel readiness gate. The
-explicit historical source is used for 2019 because DfT no longer publishes a
-standalone final 2019 collision CSV.
+explicit historical source is used for 2019 and 2020 because DfT no longer
+publishes standalone final collision CSVs for those years. The optional
+`--urban-rural` lookup applies the official 2011 two-way classification to each
+road count point and records it against each reporting year.
 
 ## Documentation
 
