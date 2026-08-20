@@ -4,9 +4,10 @@ Exposure-aware road safety screening for Great Britain, designed to show where
 historical evidence, professional statistical methods, and calibrated machine
 learning agree or disagree.
 
-> **Current release:** network and exposure preview. The application displays
-> observed 2024 collision evidence and DfT traffic exposure for major-road
-> links. It does not publish expected-risk scores or intervention advice.
+> **Current release:** network, exposure, and descriptive screening preview.
+> The application displays observed 2024 collision evidence, DfT traffic
+> exposure, and exposure-normalised screening signals for major-road links. It
+> does not publish expected-risk scores or intervention advice.
 
 ## Why this project
 
@@ -37,6 +38,7 @@ road-network graph models.
 - transparent exposure-rate baseline with validation/test evaluation metrics
 - versioned FastAPI endpoints for collision and major-road evidence
 - React and MapLibre observed/exposure investigation modes
+- React and MapLibre exposure-adjusted screening mode with rate-based styling
 - future-year and grouped-authority evaluation contract
 - fixture-driven unit and API tests
 

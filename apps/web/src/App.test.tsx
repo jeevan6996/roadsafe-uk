@@ -66,4 +66,8 @@ test("renders the evidence workspace and responsible-use caveat", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Exposure" }));
   expect(screen.getByRole("heading", { name: "Major-road network" })).toBeInTheDocument();
   expect(screen.getByText("AADF link estimates are descriptive exposure, not expected collision risk.")).toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole("button", { name: "Screening" }));
+  expect(screen.getByText(/Segments are coloured by observed collisions/)).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Expected" })).toBeDisabled();
 });

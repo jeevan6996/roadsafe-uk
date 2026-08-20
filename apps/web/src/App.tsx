@@ -98,7 +98,7 @@ function App() {
   const [networkSummary, setNetworkSummary] = useState<NetworkSummary | null>(null);
   const [selected, setSelected] = useState<Collision | null>(null);
   const [selectedSegment, setSelectedSegment] = useState<SegmentFeature | null>(null);
-  const [mode, setMode] = useState<"observed" | "exposure">("observed");
+  const [mode, setMode] = useState<"observed" | "exposure" | "screening">("observed");
   const [severity, setSeverity] = useState<"all" | "2" | "3">("all");
   const [query, setQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -264,7 +264,32 @@ function App() {
           "line-opacity": 0.9,
         },
       });
+      map.addLayer({
+        id: "segment-screening",
+        type: "line",
+        source: "segments",
+        layout: { visibility: "none", "line-cap": "round" },
+        paint: {
+          "line-width": ["interpolate", ["linear"], ["zoom"], 8, 2.5, 14, 8],
+          "line-color": [
+            "interpolate",
+            ["linear"],
+            ["get", "collision_rate_per_100m_vehicle_km"],
+            0,
+            "#087f6b",
+            5,
+            "#d97706",
+            20,
+            "#a92727",
+          ],
+          "line-opacity": 0.92,
+        },
+      });
       map.on("click", "segment-exposure", (event) => {
+        const feature = event.features?.[0] as SegmentFeature | undefined;
+        if (feature) setSelectedSegment(feature);
+      });
+      map.on("click", "segment-screening", (event) => {
         const feature = event.features?.[0] as SegmentFeature | undefined;
         if (feature) setSelectedSegment(feature);
       });
@@ -272,6 +297,12 @@ function App() {
         map.getCanvas().style.cursor = "pointer";
       });
       map.on("mouseleave", "segment-exposure", () => {
+        map.getCanvas().style.cursor = "";
+      });
+      map.on("mouseenter", "segment-screening", () => {
+        map.getCanvas().style.cursor = "pointer";
+      });
+      map.on("mouseleave", "segment-screening", () => {
         map.getCanvas().style.cursor = "";
       });
     };
@@ -284,12 +315,16 @@ function App() {
     if (!map || !map.isStyleLoaded()) return;
     const observedVisibility = mode === "observed" ? "visible" : "none";
     const exposureVisibility = mode === "exposure" ? "visible" : "none";
+    const screeningVisibility = mode === "screening" ? "visible" : "none";
     if (map.getLayer("collisions")) {
       map.setLayoutProperty("collisions", "visibility", observedVisibility);
       map.setLayoutProperty("collision-halo", "visibility", observedVisibility);
     }
     if (map.getLayer("segment-exposure")) {
       map.setLayoutProperty("segment-exposure", "visibility", exposureVisibility);
+    }
+    if (map.getLayer("segment-screening")) {
+      map.setLayoutProperty("segment-screening", "visibility", screeningVisibility);
     }
   }, [mode, mapReady, segmentData]);
 
@@ -337,7 +372,15 @@ function App() {
             setQuery("");
           }}
         >Exposure</button>
-        <button className="mode" disabled>Expected</button>
+        <button
+          className={`mode ${mode === "screening" ? "active" : ""}`}
+          onClick={() => {
+            setMode("screening");
+            setSelected(null);
+            setQuery("");
+          }}
+        >Screening</button>
+        <button className="mode" disabled title="Expected-frequency model is planned">Expected</button>
         <button className="mode" disabled>Agreement</button>
       </section>
 
@@ -363,13 +406,23 @@ function App() {
             <i className="flow-high" />High
           </div>
         )}
+        {mode === "screening" && (
+          <div className="exposure-legend" aria-label="Observed collision rate legend">
+            <span>Observed rate</span>
+            <i className="flow-low" />Low
+            <i className="flow-medium" />Elevated
+            <i className="flow-high" />High
+          </div>
+        )}
         {error && <div className="error-banner">{error}</div>}
       </section>
 
       <aside className="evidence-panel">
         <div className="panel-heading">
           <div>
-            <span className="eyebrow">{mode === "observed" ? "Observed evidence" : "Traffic exposure"}</span>
+            <span className="eyebrow">
+              {mode === "observed" ? "Observed evidence" : mode === "exposure" ? "Traffic exposure" : "Exposure-adjusted screening"}
+            </span>
             <h2>{mode === "observed" ? (selected ? selected.collision_id : "Pilot area") : (selectedSegment?.properties.road_number ?? "Major-road network")}</h2>
           </div>
           <Info size={18} />
@@ -407,6 +460,29 @@ function App() {
                 </dl>
               </div>
               <div className="notice"><Info size={17} /><p>{networkSummary?.caveat ?? "Loading exposure limitations."}</p></div>
+            </>
+          )
+        ) : mode === "screening" ? (
+          selectedSegment ? (
+            <div className="selected-evidence">
+              <div className="method-label method-estimated">Observed screening</div>
+              <dl className="detail-list">
+                <div><dt>Collision rate</dt><dd>{selectedSegment.properties.collision_rate_per_100m_vehicle_km.toFixed(2)} / 100m vehicle-km</dd></div>
+                <div><dt>Observed collisions</dt><dd>{selectedSegment.properties.collision_count}</dd></div>
+                <div><dt>Observed KSI</dt><dd>{selectedSegment.properties.ksi_count}</dd></div>
+                <div><dt>Exposure</dt><dd>{selectedSegment.properties.all_motor_vehicles.toLocaleString()} vehicles/day</dd></div>
+                <div><dt>Road</dt><dd>{selectedSegment.properties.road_number}</dd></div>
+              </dl>
+              <div className="notice"><Info size={17} /><p>Descriptive observed rate normalised by traffic exposure. This is a screening signal, not an expected-frequency or causal-risk estimate.</p></div>
+            </div>
+          ) : (
+            <>
+              <div className="metric-row">
+                <div><span>Links</span><strong>{networkSummary?.segments ?? "—"}</strong></div>
+                <div><span>Matched KSI</span><strong>{networkSummary?.matched_ksi ?? "—"}</strong></div>
+                <div><span>Exposure basis</span><strong>AADF</strong></div>
+              </div>
+              <div className="notice"><Info size={17} /><p>Segments are coloured by observed collisions per 100 million vehicle-kilometres. Low counts and estimated exposure require cautious interpretation.</p></div>
             </>
           )
         ) : selected ? (
