@@ -24,10 +24,10 @@
 - completed: screening stability labels and transparent rate standard-error proxy
 - completed: exposure-rate baseline with validation/test metrics
 - completed: descriptive screening mode in the investigation map
+- implemented: negative-binomial NB2 SPF benchmark with exposure offset and baseline comparison
 - completed: ingest and match annual 2019–2024 collision/network evidence
 - completed: join authoritative 2011 urban/rural classification for all contract years
-- next: run statistical screening and model baselines on the ready panel
-- negative-binomial Safety Performance Function
+- next: run the SPF on the generated 2019–2024 panel and assess future/authority holdouts
 - Empirical Bayes expected frequency and excess-frequency estimates
 - temporal and geographic backtests with uncertainty intervals
 

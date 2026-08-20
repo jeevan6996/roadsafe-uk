@@ -82,11 +82,11 @@ def test_build_contract_evidence_uses_historical_source_for_2019(tmp_path: Path)
     raw.mkdir()
     history = raw / "collision-history.csv"
     history_frame = pl.concat(
-            [
-                pl.read_csv(COLLISIONS).with_columns(pl.lit(2018).alias("collision_year")),
-                pl.read_csv(COLLISIONS).with_columns(pl.lit(2019).alias("collision_year")),
-                pl.read_csv(COLLISIONS).with_columns(pl.lit(2020).alias("collision_year")),
-            ]
+        [
+            pl.read_csv(COLLISIONS).with_columns(pl.lit(2018).alias("collision_year")),
+            pl.read_csv(COLLISIONS).with_columns(pl.lit(2019).alias("collision_year")),
+            pl.read_csv(COLLISIONS).with_columns(pl.lit(2020).alias("collision_year")),
+        ]
     ).with_columns(
         (
             pl.col("collision_index").cast(pl.String)

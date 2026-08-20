@@ -14,6 +14,7 @@ from roadsafe.network import build_network_evidence
 from roadsafe.orchestration import build_contract_evidence
 from roadsafe.pipeline import build_pilot
 from roadsafe.screening import build_descriptive_screening
+from roadsafe.spf import SPFValidationError, build_negative_binomial_spf
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -57,6 +58,12 @@ def create_parser() -> argparse.ArgumentParser:
     baseline.add_argument("--panel", required=True, type=Path)
     baseline.add_argument("--contract", required=True, type=Path)
     baseline.add_argument("--output", required=True, type=Path)
+    spf = commands.add_parser(
+        "build-spf", help="Evaluate the negative-binomial Safety Performance Function"
+    )
+    spf.add_argument("--panel", required=True, type=Path)
+    spf.add_argument("--contract", required=True, type=Path)
+    spf.add_argument("--output", required=True, type=Path)
     contract = commands.add_parser(
         "build-contract", help="Build annual evidence for every year in an evaluation contract"
     )
@@ -99,6 +106,12 @@ def main() -> None:
         try:
             report = build_exposure_baseline(args.panel, args.contract, args.output)
         except BaselineValidationError as error:
+            parser.error(str(error))
+        print(json.dumps(report, indent=2, sort_keys=True))
+    elif args.command == "build-spf":
+        try:
+            report = build_negative_binomial_spf(args.panel, args.contract, args.output)
+        except SPFValidationError as error:
             parser.error(str(error))
         print(json.dumps(report, indent=2, sort_keys=True))
     elif args.command == "build-contract":

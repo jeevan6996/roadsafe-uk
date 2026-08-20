@@ -93,16 +93,20 @@ def main() -> None:
     codes = [feature["properties"]["OA11CD"] for feature in geo["features"]]
     tree = STRtree(polygons)
     to_bng = Transformer.from_crs("EPSG:4326", "EPSG:27700", always_xy=True)
-    pilot_box = shape({
-        "type": "Polygon",
-        "coordinates": [[
-            to_bng.transform(PILOT_BOUNDS["min_longitude"], PILOT_BOUNDS["min_latitude"]),
-            to_bng.transform(PILOT_BOUNDS["max_longitude"], PILOT_BOUNDS["min_latitude"]),
-            to_bng.transform(PILOT_BOUNDS["max_longitude"], PILOT_BOUNDS["max_latitude"]),
-            to_bng.transform(PILOT_BOUNDS["min_longitude"], PILOT_BOUNDS["max_latitude"]),
-            to_bng.transform(PILOT_BOUNDS["min_longitude"], PILOT_BOUNDS["min_latitude"]),
-        ]],
-    })
+    pilot_box = shape(
+        {
+            "type": "Polygon",
+            "coordinates": [
+                [
+                    to_bng.transform(PILOT_BOUNDS["min_longitude"], PILOT_BOUNDS["min_latitude"]),
+                    to_bng.transform(PILOT_BOUNDS["max_longitude"], PILOT_BOUNDS["min_latitude"]),
+                    to_bng.transform(PILOT_BOUNDS["max_longitude"], PILOT_BOUNDS["max_latitude"]),
+                    to_bng.transform(PILOT_BOUNDS["min_longitude"], PILOT_BOUNDS["max_latitude"]),
+                    to_bng.transform(PILOT_BOUNDS["min_longitude"], PILOT_BOUNDS["min_latitude"]),
+                ]
+            ],
+        }
+    )
 
     def classify(point: object) -> str | None:
         for index in tree.query(point):  # type: ignore[arg-type]

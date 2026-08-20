@@ -36,6 +36,7 @@ road-network graph models.
 - contract-level annual evidence orchestration across all evaluation years
 - observed screening stability labels and a transparent Poisson rate standard-error proxy
 - transparent exposure-rate baseline with validation/test evaluation metrics
+- experimental negative-binomial NB2 Safety Performance Function benchmark with exposure offset
 - versioned FastAPI endpoints for collision and major-road evidence
 - React and MapLibre observed/exposure investigation modes
 - React and MapLibre exposure-adjusted screening mode with rate-based styling
@@ -172,6 +173,21 @@ roadsafe build-baseline \
 This estimates one KSI rate from training years, applies the annual vehicle-km
 exposure offset, and reports validation/test MAE and RMSE. It is a transparent
 benchmark for later Safety Performance Functions, not a deployment model.
+
+Evaluate the experimental negative-binomial Safety Performance Function:
+
+```bash
+roadsafe build-spf \
+  --panel data/processed/segment-year-panel.parquet \
+  --contract configs/evaluation-v1.json \
+  --output data/processed/spf
+```
+
+The command fits an NB2 count model with a log annual vehicle-kilometre offset,
+reports validation/test metrics beside the exposure-rate baseline, records
+unseen-authority coverage, and writes predictions plus a provenance report. The
+SPF remains an evaluated benchmark until it demonstrates reliable improvement
+on the declared future and authority holdouts.
 
 To run the full contract workflow from source templates, use:
 

@@ -73,6 +73,14 @@ training, validation, and test rows. Invalid scoring rows are rejected before
 metrics are calculated, rather than allowing missing or negative values to
 produce misleading errors or undefined results.
 
+The experimental NB2 Safety Performance Function uses the same panel contract,
+fits only on declared training years, and uses the log of annual vehicle-km as
+an exposure offset. Categorical road and exposure-quality fields are encoded
+from training data only; unseen scoring levels use the reference category.
+Predictions are written with validation/test split labels and compared with the
+exposure-rate baseline. The model is not promoted until future-period,
+unseen-authority, calibration, subgroup, and ranking evidence supports it.
+
 The network build supports an explicit urban/rural lookup keyed by
 `count_point_id` and `year`. Missing lookup data is represented as null rather
 than inferred, so subgroup readiness remains auditable.
