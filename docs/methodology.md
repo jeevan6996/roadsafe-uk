@@ -80,6 +80,10 @@ from training data only; unseen scoring levels use the reference category.
 Predictions are written with validation/test split labels and compared with the
 exposure-rate baseline. The model is not promoted until future-period,
 unseen-authority, calibration, subgroup, and ranking evidence supports it.
+The current West Yorkshire panel has repeated authorities across all years, so
+the report also includes a deterministic leave-one-authority-out diagnostic but
+correctly records the absence of future unseen-authority coverage as a promotion
+blocker.
 
 The network build supports an explicit urban/rural lookup keyed by
 `count_point_id` and `year`. Missing lookup data is represented as null rather

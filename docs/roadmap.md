@@ -27,7 +27,8 @@
 - implemented: negative-binomial NB2 SPF benchmark with exposure offset and baseline comparison
 - completed: ingest and match annual 2019–2024 collision/network evidence
 - completed: join authoritative 2011 urban/rural classification for all contract years
-- next: run the SPF on the generated 2019–2024 panel and assess future/authority holdouts
+- completed: run the SPF on the generated 2019–2024 panel with calibration, ranking, subgroup, and authority-holdout diagnostics
+- next: evaluate on a panel containing genuinely unseen future authorities
 - Empirical Bayes expected frequency and excess-frequency estimates
 - temporal and geographic backtests with uncertainty intervals
 
