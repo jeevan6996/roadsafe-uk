@@ -28,9 +28,10 @@
 - completed: ingest and match annual 2019–2024 collision/network evidence
 - completed: join authoritative 2011 urban/rural classification for all contract years
 - completed: run the SPF on the generated 2019–2024 panel with calibration, ranking, subgroup, and authority-holdout diagnostics
-- next: evaluate on a panel containing genuinely unseen future authorities
-- Empirical Bayes expected frequency and excess-frequency estimates
-- temporal and geographic backtests with uncertainty intervals
+- current: retain the SPF as an evaluated benchmark; it improves on the exposure-rate baseline, but is not promoted because the current panel has no genuinely unseen future authorities
+- next: expand the panel so future and authority-group holdouts are genuinely unseen, then repeat the promotion evaluation
+- next: add Empirical Bayes expected-frequency and excess-frequency estimates
+- next: compare SPF and Empirical Bayes with calibrated ML challengers using temporal and geographic backtests with uncertainty intervals
 
 ## 0.4 Model agreement
 
@@ -38,6 +39,13 @@
 - emerging-pattern detector
 - shared ranking, calibration, stability, and subgroup evaluation
 - agreement and disagreement representation in the product
+
+## 1.1 Public demonstration
+
+- expose only promoted analytical layers in the investigation workflow
+- add model/data cards, calibration and subgroup explanations, and evidence exports
+- add model-agreement and disagreement views after the promotion gate passes
+- publish a reproducible benchmark report and a short recorded walkthrough
 
 ## 1.0 Defensible investigation workflow
 
