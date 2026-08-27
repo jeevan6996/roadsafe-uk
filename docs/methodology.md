@@ -73,6 +73,17 @@ training, validation, and test rows. Invalid scoring rows are rejected before
 metrics are calculated, rather than allowing missing or negative values to
 produce misleading errors or undefined results.
 
+The Empirical Bayes screening layer fits a Gamma prior over segment collision
+rates using training years only. Its Poisson-gamma posterior combines the
+training prior with each observed scoring-period count and exposure, producing
+an exposure-scaled expected frequency and a non-negative excess-frequency
+signal. The report includes the prior rate, prior shape, uncertainty proxy, and
+split-level observed-versus-expected totals. This is intentionally a
+retrospective screening estimate: because it uses the observed scoring-period
+count, it must not be described as a future prediction or causal intervention
+effect. It is retained as an analytical layer until comparison with the SPF
+and calibrated challengers is complete.
+
 The experimental NB2 Safety Performance Function uses the same panel contract,
 fits only on declared training years, and uses the log of annual vehicle-km as
 an exposure offset. Categorical road and exposure-quality fields are encoded

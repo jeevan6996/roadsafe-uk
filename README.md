@@ -37,6 +37,7 @@ road-network graph models.
 - observed screening stability labels and a transparent Poisson rate standard-error proxy
 - transparent exposure-rate baseline with validation/test evaluation metrics
 - experimental negative-binomial NB2 Safety Performance Function benchmark with exposure offset
+- auditable Poisson-gamma Empirical Bayes retrospective screening with excess-frequency signals
 - versioned FastAPI endpoints for collision and major-road evidence
 - React and MapLibre observed/exposure investigation modes
 - React and MapLibre exposure-adjusted screening mode with rate-based styling
@@ -188,6 +189,21 @@ reports validation/test metrics beside the exposure-rate baseline, records
 unseen-authority coverage, and writes predictions plus a provenance report. The
 SPF remains an evaluated benchmark until it demonstrates reliable improvement
 on the declared future and authority holdouts.
+
+Build the Empirical Bayes retrospective screening artifact:
+
+```bash
+roadsafe build-empirical-bayes \
+  --panel data/processed/segment-year-panel.parquet \
+  --contract configs/evaluation-v1.json \
+  --output data/processed/empirical-bayes
+```
+
+This estimates the prior from training years only, then shrinks observed
+scoring-period counts toward the exposure-scaled prior mean. The output
+includes expected frequency, uncertainty, and positive excess-frequency
+signals. It is a retrospective screening layer, not a future prediction or a
+causal estimate.
 
 To run the full contract workflow from source templates, use:
 

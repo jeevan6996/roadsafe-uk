@@ -25,12 +25,12 @@
 - completed: exposure-rate baseline with validation/test metrics
 - completed: descriptive screening mode in the investigation map
 - implemented: negative-binomial NB2 SPF benchmark with exposure offset and baseline comparison
+- implemented: training-only Poisson-gamma Empirical Bayes retrospective screening with expected and excess frequency
 - completed: ingest and match annual 2019–2024 collision/network evidence
 - completed: join authoritative 2011 urban/rural classification for all contract years
 - completed: run the SPF on the generated 2019–2024 panel with calibration, ranking, subgroup, and authority-holdout diagnostics
 - current: retain the SPF as an evaluated benchmark; it improves on the exposure-rate baseline, but is not promoted because the current panel has no genuinely unseen future authorities
 - next: expand the panel so future and authority-group holdouts are genuinely unseen, then repeat the promotion evaluation
-- next: add Empirical Bayes expected-frequency and excess-frequency estimates
 - next: compare SPF and Empirical Bayes with calibrated ML challengers using temporal and geographic backtests with uncertainty intervals
 
 ## 0.4 Model agreement

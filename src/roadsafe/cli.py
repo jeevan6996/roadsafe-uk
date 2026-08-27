@@ -9,6 +9,7 @@ from roadsafe.acquisition import (
     acquire_sources,
 )
 from roadsafe.baseline import BaselineValidationError, build_exposure_baseline
+from roadsafe.empirical_bayes import EmpiricalBayesValidationError, build_empirical_bayes_screening
 from roadsafe.evaluation import build_segment_year_panel
 from roadsafe.network import build_network_evidence
 from roadsafe.orchestration import build_contract_evidence
@@ -64,6 +65,13 @@ def create_parser() -> argparse.ArgumentParser:
     spf.add_argument("--panel", required=True, type=Path)
     spf.add_argument("--contract", required=True, type=Path)
     spf.add_argument("--output", required=True, type=Path)
+    empirical_bayes = commands.add_parser(
+        "build-empirical-bayes",
+        help="Build retrospective Poisson-gamma Empirical Bayes screening artifacts",
+    )
+    empirical_bayes.add_argument("--panel", required=True, type=Path)
+    empirical_bayes.add_argument("--contract", required=True, type=Path)
+    empirical_bayes.add_argument("--output", required=True, type=Path)
     contract = commands.add_parser(
         "build-contract", help="Build annual evidence for every year in an evaluation contract"
     )
@@ -112,6 +120,12 @@ def main() -> None:
         try:
             report = build_negative_binomial_spf(args.panel, args.contract, args.output)
         except SPFValidationError as error:
+            parser.error(str(error))
+        print(json.dumps(report, indent=2, sort_keys=True))
+    elif args.command == "build-empirical-bayes":
+        try:
+            report = build_empirical_bayes_screening(args.panel, args.contract, args.output)
+        except EmpiricalBayesValidationError as error:
             parser.error(str(error))
         print(json.dumps(report, indent=2, sort_keys=True))
     elif args.command == "build-contract":
