@@ -4,7 +4,7 @@ Exposure-aware road safety screening for Great Britain, designed to show where
 historical evidence, professional statistical methods, and calibrated machine
 learning agree or disagree.
 
-> **Current release:** network, exposure, and descriptive screening preview.
+> **Current release:** network, exposure, descriptive, and optional Empirical Bayes screening preview.
 > The application displays observed 2024 collision evidence, DfT traffic
 > exposure, and exposure-normalised screening signals for major-road links. It
 > does not publish expected-risk scores or intervention advice.
