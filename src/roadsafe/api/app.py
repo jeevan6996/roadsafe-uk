@@ -23,6 +23,7 @@ FIXTURE_PATH = ROOT / "tests" / "fixtures" / "dft-collisions-west-yorkshire-2024
 DATA_PATH = Path(os.environ.get("ROADSAFE_DATA_PATH", FIXTURE_PATH))
 NETWORK_FIXTURE_PATH = ROOT / "tests" / "fixtures" / "segment-evidence-west-yorkshire-2024.geojson"
 NETWORK_PATH = Path(os.environ.get("ROADSAFE_NETWORK_PATH", NETWORK_FIXTURE_PATH))
+EMPIRICAL_BAYES_PATH = os.environ.get("ROADSAFE_EMPIRICAL_BAYES_PATH")
 
 app = FastAPI(
     title="RoadSafe UK API",
@@ -47,6 +48,16 @@ def collision_frame() -> pl.DataFrame:
 @lru_cache
 def network_features() -> dict[str, Any]:
     return cast(dict[str, Any], json.loads(NETWORK_PATH.read_text(encoding="utf-8")))
+
+
+@lru_cache
+def empirical_bayes_frame() -> pl.DataFrame | None:
+    if not EMPIRICAL_BAYES_PATH:
+        return None
+    path = Path(EMPIRICAL_BAYES_PATH)
+    if not path.is_file():
+        return None
+    return pl.read_parquet(path)
 
 
 def to_point(row: dict[str, object]) -> CollisionPoint:
@@ -132,3 +143,23 @@ def network_summary() -> NetworkSummary:
         scope="DfT major-road links only",
         caveat="AADF link estimates are descriptive exposure, not expected collision risk.",
     )
+
+
+@app.get("/api/v1/empirical-bayes")
+def empirical_bayes(year: int = Query(default=2024, ge=2000, le=2_100)) -> dict[str, Any]:
+    frame = empirical_bayes_frame()
+    if frame is None:
+        return {
+            "available": False,
+            "reason": "Empirical Bayes artifact is not configured for this server.",
+        }
+    if "year" not in frame.columns:
+        return {"available": False, "reason": "Empirical Bayes artifact has no year column."}
+    records = frame.filter(pl.col("year") == year).to_dicts()
+    return {
+        "available": True,
+        "year": year,
+        "method": "Poisson-gamma Empirical Bayes retrospective frequency screening",
+        "not_future_prediction": True,
+        "records": records,
+    }

@@ -38,6 +38,7 @@ type Summary = {
 };
 
 type SegmentProperties = {
+  segment_key: string;
   segment_id: string;
   count_point_id: number;
   road_number: string;
@@ -49,6 +50,10 @@ type SegmentProperties = {
   collision_count: number;
   ksi_count: number;
   collision_rate_per_100m_vehicle_km: number;
+  prior_expected_ksi?: number;
+  expected_ksi?: number;
+  expected_ksi_std?: number;
+  excess_ksi?: number;
 };
 
 type SegmentFeature = GeoJSON.Feature<GeoJSON.LineString, SegmentProperties>;
@@ -63,6 +68,13 @@ type NetworkSummary = {
   matched_ksi: number;
   scope: string;
   caveat: string;
+};
+
+type EmpiricalBayesResponse = {
+  available: boolean;
+  year?: number;
+  records?: Array<SegmentProperties & { evaluation_split: string }>;
+  reason?: string;
 };
 
 const API = import.meta.env.VITE_API_URL ?? "http://localhost:8000/api/v1";
@@ -98,11 +110,12 @@ function App() {
   const [networkSummary, setNetworkSummary] = useState<NetworkSummary | null>(null);
   const [selected, setSelected] = useState<Collision | null>(null);
   const [selectedSegment, setSelectedSegment] = useState<SegmentFeature | null>(null);
-  const [mode, setMode] = useState<"observed" | "exposure" | "screening">("observed");
+  const [mode, setMode] = useState<"observed" | "exposure" | "screening" | "expected">("observed");
   const [severity, setSeverity] = useState<"all" | "2" | "3">("all");
   const [query, setQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [mapReady, setMapReady] = useState(false);
+  const [empiricalBayes, setEmpiricalBayes] = useState<EmpiricalBayesResponse>({ available: false });
 
   useEffect(() => {
     Promise.all([
@@ -118,6 +131,9 @@ function App() {
         setNetworkSummary(networkSummaryData);
       })
       .catch(() => setError("Evidence API unavailable"));
+    getJson<EmpiricalBayesResponse>(`${API}/empirical-bayes?year=2024`)
+      .then(setEmpiricalBayes)
+      .catch(() => setEmpiricalBayes({ available: false }));
   }, []);
 
   const visible = useMemo(
@@ -133,16 +149,25 @@ function App() {
   const visibleSegments = useMemo<SegmentCollection>(
     () => ({
       type: "FeatureCollection",
-      features: segmentData.features.filter((feature) => {
-        const term = query.trim().toLowerCase();
-        return (
-          !term ||
-          feature.properties.road_number.toLowerCase().includes(term) ||
-          feature.properties.segment_id.toLowerCase().includes(term)
-        );
-      }),
+      features: segmentData.features
+        .map((feature) => {
+          const modelRecord = empiricalBayes.records?.find(
+            (record) => record.segment_key === feature.properties.segment_key,
+          );
+          return modelRecord
+            ? { ...feature, properties: { ...feature.properties, ...modelRecord } }
+            : feature;
+        })
+        .filter((feature) => {
+          const term = query.trim().toLowerCase();
+          return (
+            !term ||
+            feature.properties.road_number.toLowerCase().includes(term) ||
+            feature.properties.segment_id.toLowerCase().includes(term)
+          );
+        }),
     }),
-    [query, segmentData],
+    [empiricalBayes.records, query, segmentData],
   );
 
   useEffect(() => {
@@ -285,11 +310,36 @@ function App() {
           "line-opacity": 0.92,
         },
       });
+      map.addLayer({
+        id: "segment-expected",
+        type: "line",
+        source: "segments",
+        layout: { visibility: "none", "line-cap": "round" },
+        paint: {
+          "line-width": ["interpolate", ["linear"], ["zoom"], 8, 2.5, 14, 8],
+          "line-color": [
+            "interpolate",
+            ["linear"],
+            ["get", "excess_ksi"],
+            0,
+            "#087f6b",
+            1,
+            "#d97706",
+            4,
+            "#a92727",
+          ],
+          "line-opacity": 0.92,
+        },
+      });
       map.on("click", "segment-exposure", (event) => {
         const feature = event.features?.[0] as SegmentFeature | undefined;
         if (feature) setSelectedSegment(feature);
       });
       map.on("click", "segment-screening", (event) => {
+        const feature = event.features?.[0] as SegmentFeature | undefined;
+        if (feature) setSelectedSegment(feature);
+      });
+      map.on("click", "segment-expected", (event) => {
         const feature = event.features?.[0] as SegmentFeature | undefined;
         if (feature) setSelectedSegment(feature);
       });
@@ -305,6 +355,12 @@ function App() {
       map.on("mouseleave", "segment-screening", () => {
         map.getCanvas().style.cursor = "";
       });
+      map.on("mouseenter", "segment-expected", () => {
+        map.getCanvas().style.cursor = "pointer";
+      });
+      map.on("mouseleave", "segment-expected", () => {
+        map.getCanvas().style.cursor = "";
+      });
     };
     if (map.isStyleLoaded()) update();
     else map.once("load", update);
@@ -316,6 +372,7 @@ function App() {
     const observedVisibility = mode === "observed" ? "visible" : "none";
     const exposureVisibility = mode === "exposure" ? "visible" : "none";
     const screeningVisibility = mode === "screening" ? "visible" : "none";
+    const expectedVisibility = mode === "expected" ? "visible" : "none";
     if (map.getLayer("collisions")) {
       map.setLayoutProperty("collisions", "visibility", observedVisibility);
       map.setLayoutProperty("collision-halo", "visibility", observedVisibility);
@@ -325,6 +382,9 @@ function App() {
     }
     if (map.getLayer("segment-screening")) {
       map.setLayoutProperty("segment-screening", "visibility", screeningVisibility);
+    }
+    if (map.getLayer("segment-expected")) {
+      map.setLayoutProperty("segment-expected", "visibility", expectedVisibility);
     }
   }, [mode, mapReady, segmentData]);
 
@@ -380,7 +440,16 @@ function App() {
             setQuery("");
           }}
         >Screening</button>
-        <button className="mode" disabled title="Expected-frequency model is planned">Expected</button>
+        <button
+          className={`mode ${mode === "expected" ? "active" : ""}`}
+          disabled={!empiricalBayes.available}
+          title={empiricalBayes.available ? "Empirical Bayes screening" : "Expected-frequency model unavailable"}
+          onClick={() => {
+            setMode("expected");
+            setSelected(null);
+            setQuery("");
+          }}
+        >Expected</button>
         <button className="mode" disabled>Agreement</button>
       </section>
 
@@ -409,6 +478,14 @@ function App() {
         {mode === "screening" && (
           <div className="exposure-legend" aria-label="Observed collision rate legend">
             <span>Observed rate</span>
+            <i className="flow-low" />Low
+            <i className="flow-medium" />Elevated
+            <i className="flow-high" />High
+          </div>
+        )}
+        {mode === "expected" && (
+          <div className="exposure-legend" aria-label="Excess frequency legend">
+            <span>Excess frequency</span>
             <i className="flow-low" />Low
             <i className="flow-medium" />Elevated
             <i className="flow-high" />High
@@ -483,6 +560,29 @@ function App() {
                 <div><span>Exposure basis</span><strong>AADF</strong></div>
               </div>
               <div className="notice"><Info size={17} /><p>Segments are coloured by observed collisions per 100 million vehicle-kilometres. Low counts and estimated exposure require cautious interpretation.</p></div>
+            </>
+          )
+        ) : mode === "expected" ? (
+          selectedSegment ? (
+            <div className="selected-evidence">
+              <div className="method-label method-counted">Empirical Bayes</div>
+              <dl className="detail-list">
+                <div><dt>Expected KSI</dt><dd>{selectedSegment.properties.expected_ksi?.toFixed(2) ?? "—"}</dd></div>
+                <div><dt>Uncertainty proxy</dt><dd>±{selectedSegment.properties.expected_ksi_std?.toFixed(2) ?? "—"}</dd></div>
+                <div><dt>Observed KSI</dt><dd>{selectedSegment.properties.ksi_count}</dd></div>
+                <div><dt>Excess KSI</dt><dd>{selectedSegment.properties.excess_ksi?.toFixed(2) ?? "—"}</dd></div>
+                <div><dt>Road</dt><dd>{selectedSegment.properties.road_number}</dd></div>
+              </dl>
+              <div className="notice"><Info size={17} /><p>Retrospective Empirical Bayes screening uses the observed period count. It is not a future prediction or causal intervention estimate.</p></div>
+            </div>
+          ) : (
+            <>
+              <div className="metric-row">
+                <div><span>Links</span><strong>{visibleSegments.features.length}</strong></div>
+                <div><span>Model</span><strong>EB</strong></div>
+                <div><span>Period</span><strong>2024</strong></div>
+              </div>
+              <div className="notice"><Info size={17} /><p>Lines show positive excess frequency after shrinking observed KSI counts toward a training-period prior. Review uncertainty and data quality before interpretation.</p></div>
             </>
           )
         ) : selected ? (

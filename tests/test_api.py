@@ -64,3 +64,9 @@ def test_network_summary_keeps_exposure_scope_explicit() -> None:
         "scope": "DfT major-road links only",
         "caveat": "AADF link estimates are descriptive exposure, not expected collision risk.",
     }
+
+
+def test_empirical_bayes_is_explicitly_optional() -> None:
+    response = client.get("/api/v1/empirical-bayes")
+    assert response.status_code == 200
+    assert response.json()["available"] is False

@@ -76,8 +76,13 @@ To serve a generated pilot instead of the 12-record test fixture:
 ```bash
 ROADSAFE_DATA_PATH=data/processed/pilot-collisions-2024.parquet \
 ROADSAFE_NETWORK_PATH=data/processed/segment-evidence-2024.geojson \
+ROADSAFE_EMPIRICAL_BAYES_PATH=data/processed/contract-v1/empirical-bayes/empirical-bayes-screening.parquet \
   uvicorn roadsafe.api.app:app --reload
 ```
+
+The optional Empirical Bayes path enables the `Expected` investigation mode;
+without it, the mode remains unavailable rather than showing incomplete model
+evidence.
 
 ## Acquire official source data
 
