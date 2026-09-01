@@ -110,6 +110,7 @@ def assess_panel_readiness(panel: pl.DataFrame, contract: EvaluationContract) ->
         if "local_authority_code" in contract_panel.columns
         else 0
     )
+    geographic_holdout = assess_geographic_holdout(panel, contract)
     blockers = []
     if missing_years:
         blockers.append("missing_contract_years")
@@ -119,6 +120,8 @@ def assess_panel_readiness(panel: pl.DataFrame, contract: EvaluationContract) ->
         blockers.append("incomplete_subgroup_values")
     if geographic_groups < 2:
         blockers.append("insufficient_geographic_groups")
+    if not geographic_holdout["available"]:
+        blockers.append("no_unseen_geographic_groups")
     if invalid_exposure:
         blockers.append("invalid_exposure_rows")
     if invalid_target:
@@ -128,6 +131,7 @@ def assess_panel_readiness(panel: pl.DataFrame, contract: EvaluationContract) ->
         "required_subgroups_available": not missing_subgroups,
         "subgroup_values_complete": not incomplete_subgroup_rows,
         "geographic_holdout_possible": geographic_groups >= 2,
+        "geographic_holdout_unseen": geographic_holdout["available"],
         "exposure_values_valid": invalid_exposure == 0,
         "target_values_valid": invalid_target == 0,
     }
@@ -145,8 +149,55 @@ def assess_panel_readiness(panel: pl.DataFrame, contract: EvaluationContract) ->
         "invalid_exposure_rows": invalid_exposure,
         "invalid_target_rows": invalid_target,
         "geographic_groups": geographic_groups,
+        "geographic_holdout": geographic_holdout,
         "segments_with_complete_history": complete_history,
     }
+
+
+def assess_geographic_holdout(panel: pl.DataFrame, contract: EvaluationContract) -> dict[str, Any]:
+    """Report whether future scoring authorities are absent from training."""
+    if "local_authority_code" not in panel.columns:
+        return {
+            "available": False,
+            "reason": "missing_local_authority_code",
+            "training": [],
+            "validation": [],
+            "test": [],
+            "unseen_validation": [],
+            "unseen_test": [],
+        }
+
+    authorities = panel.select(
+        pl.col("year"), pl.col("local_authority_code").cast(pl.String).alias("authority")
+    )
+    training = set(
+        authorities.filter(pl.col("year").is_in(contract.training_years))["authority"]
+        .drop_nulls()
+        .to_list()
+    )
+    result: dict[str, Any] = {
+        "available": False,
+        "training": sorted(training),
+        "validation": [],
+        "test": [],
+        "unseen_validation": [],
+        "unseen_test": [],
+    }
+    for label, years in [("validation", contract.validation_years), ("test", contract.test_years)]:
+        future = set(
+            authorities.filter(pl.col("year").is_in(years))["authority"].drop_nulls().to_list()
+        )
+        result[label] = sorted(future)
+        result[f"unseen_{label}"] = sorted(future.difference(training))
+
+    result["available"] = bool(training and (result["unseen_validation"] or result["unseen_test"]))
+    if not result["available"]:
+        result["reason"] = (
+            "missing_training_authorities"
+            if not training
+            else "future_authorities_overlap_training"
+        )
+    return result
 
 
 def build_segment_year_panel(

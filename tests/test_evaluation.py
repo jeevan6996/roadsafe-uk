@@ -7,6 +7,7 @@ from pydantic import ValidationError
 from roadsafe.evaluation import (
     EvaluationContract,
     PanelValidationError,
+    assess_geographic_holdout,
     assess_panel_readiness,
     build_segment_year_panel,
     read_evaluation_contract,
@@ -43,7 +44,9 @@ def test_evaluation_contract_rejects_overlapping_years() -> None:
         )
 
 
-def panel_frame(year: int, *, include_urban_rural: bool = True) -> pl.DataFrame:
+def panel_frame(
+    year: int, *, include_urban_rural: bool = True, unseen_future_authority: bool = False
+) -> pl.DataFrame:
     data: dict[str, list[object]] = {
         "segment_key": ["dft-count-point-1", "dft-count-point-2"],
         "segment_id": [f"dft-mrdb-{year}-1", f"dft-mrdb-{year}-2"],
@@ -55,7 +58,10 @@ def panel_frame(year: int, *, include_urban_rural: bool = True) -> pl.DataFrame:
         "road_type": ["Major", "Major"],
         "local_authority_id": [10, 20],
         "local_authority_name": ["Authority A", "Authority B"],
-        "local_authority_code": ["E00000001", "E00000002"],
+        "local_authority_code": [
+            "E00000001",
+            "E00000003" if unseen_future_authority and year >= 2023 else "E00000002",
+        ],
         "estimation_method": ["Counted", "Estimated"],
         "all_motor_vehicles": [10_000, 20_000],
         "link_length_km": [1.0, 2.0],
@@ -72,7 +78,7 @@ def test_build_segment_year_panel_is_ready_for_complete_contract(tmp_path: Path)
     paths = []
     for year in range(2019, 2025):
         path = tmp_path / f"evidence-{year}.parquet"
-        panel_frame(year).write_parquet(path)
+        panel_frame(year, unseen_future_authority=True).write_parquet(path)
         paths.append(path)
 
     output = tmp_path / "output"
@@ -96,10 +102,39 @@ def test_panel_readiness_reports_missing_years_and_subgroups() -> None:
     assert readiness["status"] == "blocked"
     assert readiness["missing_years"] == [2019, 2020, 2021, 2022, 2023]
     assert readiness["missing_subgroups"] == ["urban_rural"]
-    assert readiness["blockers"] == ["missing_contract_years", "missing_subgroup_fields"]
+    assert readiness["blockers"] == [
+        "missing_contract_years",
+        "missing_subgroup_fields",
+        "no_unseen_geographic_groups",
+    ]
     assert readiness["readiness_score"] < 1.0
     assert readiness["readiness_checks"]["contract_years_available"] is False
     assert readiness["readiness_checks"]["required_subgroups_available"] is False
+
+
+def test_geographic_holdout_reports_training_overlap() -> None:
+    contract = read_evaluation_contract(ROOT / "configs" / "evaluation-v1.json")
+    panel = pl.concat([panel_frame(year) for year in range(2019, 2025)])
+
+    holdout = assess_geographic_holdout(panel, contract)
+
+    assert holdout["available"] is False
+    assert holdout["reason"] == "future_authorities_overlap_training"
+    assert holdout["unseen_validation"] == []
+    assert holdout["unseen_test"] == []
+
+
+def test_geographic_holdout_accepts_future_only_authority() -> None:
+    contract = read_evaluation_contract(ROOT / "configs" / "evaluation-v1.json")
+    panel = pl.concat(
+        [panel_frame(year, unseen_future_authority=True) for year in range(2019, 2025)]
+    )
+
+    holdout = assess_geographic_holdout(panel, contract)
+
+    assert holdout["available"] is True
+    assert holdout["unseen_validation"] == ["E00000003"]
+    assert holdout["unseen_test"] == ["E00000003"]
 
 
 def test_panel_readiness_blocks_partial_subgroup_coverage() -> None:

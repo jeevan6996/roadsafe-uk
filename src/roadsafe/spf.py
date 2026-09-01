@@ -9,7 +9,7 @@ import numpy as np
 import polars as pl
 import statsmodels.api as sm  # type: ignore[import-untyped]
 
-from roadsafe.evaluation import read_evaluation_contract
+from roadsafe.evaluation import assess_geographic_holdout, read_evaluation_contract
 from roadsafe.pipeline import sha256_file
 
 SPF_REQUIRED_COLUMNS = {"segment_key", "year", "annual_vehicle_km", "ksi_count"}
@@ -85,7 +85,7 @@ def build_negative_binomial_spf(
     prediction_path = output / "negative-binomial-spf-predictions.parquet"
     report_path = output / "negative-binomial-spf-report.json"
     predictions.write_parquet(prediction_path)
-    temporal_unseen = _unseen_authorities(panel, contract.validation_years, contract.test_years)
+    temporal_unseen = assess_geographic_holdout(panel, contract)
     authority_holdout = _authority_holdout(training)
     metrics = {
         "spf": _detailed_metrics_by_split(predictions),
@@ -93,7 +93,7 @@ def build_negative_binomial_spf(
     }
     promotion_blockers = [
         "no_future_unseen_authorities"
-        if not temporal_unseen["validation"] and not temporal_unseen["test"]
+        if not temporal_unseen["unseen_validation"] and not temporal_unseen["unseen_test"]
         else None,
         "authority_holdout_unavailable" if not authority_holdout["available"] else None,
         "no_future_test_mae_improvement"
@@ -293,28 +293,3 @@ def _exposure_rate_predictions(training: pl.DataFrame, scoring: pl.DataFrame) ->
     total_exposure = float(training["annual_vehicle_km"].sum())
     total_target = float(training["ksi_count"].sum())
     return scoring["annual_vehicle_km"].to_numpy().astype(float) * total_target / total_exposure
-
-
-def _unseen_authorities(
-    panel: pl.DataFrame,
-    validation_years: list[int],
-    test_years: list[int],
-) -> dict[str, Any]:
-    if "local_authority_code" not in panel.columns:
-        return {"available": False, "validation": [], "test": []}
-    training_authorities = set(
-        panel.filter(~pl.col("year").is_in(validation_years + test_years))["local_authority_code"]
-        .drop_nulls()
-        .cast(pl.String)
-        .to_list()
-    )
-    result: dict[str, Any] = {"available": True}
-    for label, years in [("validation", validation_years), ("test", test_years)]:
-        authorities = set(
-            panel.filter(pl.col("year").is_in(years))["local_authority_code"]
-            .drop_nulls()
-            .cast(pl.String)
-            .to_list()
-        )
-        result[label] = sorted(authorities.difference(training_authorities))
-    return result

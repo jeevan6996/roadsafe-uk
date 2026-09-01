@@ -73,7 +73,9 @@ def test_spf_writes_future_predictions_and_baseline_comparison(tmp_path: Path) -
     assert predictions.height == 8
     assert predictions["expected_ksi"].is_not_null().all()
     assert {"expected_ksi_lower_95", "expected_ksi_upper_95"}.issubset(predictions.columns)
-    assert report["unseen_authorities"]["available"] is True
+    assert report["unseen_authorities"]["available"] is False
+    assert report["unseen_authorities"]["unseen_validation"] == []
+    assert report["unseen_authorities"]["unseen_test"] == []
     assert report["authority_holdout"]["available"] is True
     assert "no_future_unseen_authorities" in report["promotion_blockers"]
 

@@ -61,9 +61,13 @@ Before any baseline or model is fit, it reports:
 - missing or negative KSI targets
 - absent or incomplete fields for every required subgroup
 - fewer than two local-authority groups for geographic holdout
+- no validation or test authority unseen during training
 - the number of segments with complete contract-period history
 
-The current 2019–2024 artifact passes this gate. Local authority, road
+The readiness report records the training, validation, test, and unseen
+authority sets explicitly. A panel with repeated authorities across every
+period is blocked even when it contains multiple authorities, because it does
+not support a genuinely geographic holdout. Local authority, road
 category, road type, and traffic estimation method flow from the official AADF
 source. Urban/rural status is joined from the documented ONS/Defra small-area
 source rather than inferred from road category or authority.
@@ -92,9 +96,9 @@ Predictions are written with validation/test split labels and compared with the
 exposure-rate baseline. The model is not promoted until future-period,
 unseen-authority, calibration, subgroup, and ranking evidence supports it.
 The current West Yorkshire panel has repeated authorities across all years, so
-the report also includes a deterministic leave-one-authority-out diagnostic but
-correctly records the absence of future unseen-authority coverage as a promotion
-blocker.
+the report blocks readiness for the future geographic holdout and also includes
+a deterministic leave-one-authority-out diagnostic as a separate internal
+benchmark.
 
 The network build supports an explicit urban/rural lookup keyed by
 `count_point_id` and `year`. Missing lookup data is represented as null rather

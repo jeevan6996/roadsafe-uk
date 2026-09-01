@@ -149,8 +149,11 @@ roadsafe build-panel \
 This writes `segment-year-panel.parquet` and
 `panel-readiness-report.json`. Readiness requires all declared years, valid
 exposure and targets, unique segment-year records, and complete subgroup
-fields. The 2019–2024 contract panel is now ready for evaluation; modelling
-must still respect the documented descriptive-exposure limitations.
+fields. It also requires at least one validation or test authority that is
+absent from training. The current 2019–2024 West Yorkshire panel is therefore
+blocked for geographic holdout evaluation until additional unseen-authority
+evidence is added; modelling must still respect the documented
+descriptive-exposure limitations.
 
 Build an observed, exposure-normalized screening artifact from a ready panel:
 
