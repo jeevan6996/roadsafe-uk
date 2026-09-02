@@ -96,6 +96,9 @@ def build_negative_binomial_spf(
         if not temporal_unseen["unseen_validation"] and not temporal_unseen["unseen_test"]
         else None,
         "authority_holdout_unavailable" if not authority_holdout["available"] else None,
+        "authority_holdout_incomplete"
+        if authority_holdout.get("available") and not authority_holdout.get("complete", False)
+        else None,
         "no_future_test_mae_improvement"
         if metrics["spf"].get("test", {}).get("mae", float("inf"))
         >= metrics["exposure_rate_baseline"].get("test", {}).get("mae", float("inf"))
@@ -225,34 +228,71 @@ def _authority_holdout(training: pl.DataFrame) -> dict[str, Any]:
     if len(authorities) < 2:
         return {"available": False, "reason": "fewer_than_two_training_authorities"}
 
-    held_out = authorities[-1]
-    fit_frame = training.filter(pl.col("local_authority_code").cast(pl.String) != held_out)
-    holdout = training.filter(pl.col("local_authority_code").cast(pl.String) == held_out)
-    _validate_rows(fit_frame, "authority-holdout training")
-    _validate_rows(holdout, "authority holdout")
-    specs = _feature_specs(fit_frame)
-    result = _fit_model(
-        fit_frame["ksi_count"].to_numpy().astype(float),
-        _design_matrix(fit_frame, specs),
-        fit_frame["annual_vehicle_km"].to_numpy().astype(float),
-    )
-    expected = _predict(
-        result,
-        _design_matrix(holdout, specs),
-        holdout["annual_vehicle_km"].to_numpy().astype(float),
-    )
-    holdout_predictions = holdout.with_columns(
-        pl.Series("expected_ksi", expected), pl.lit("authority_holdout").alias("evaluation_split")
-    )
-    baseline = holdout.with_columns(
-        pl.Series("expected_ksi", _exposure_rate_predictions(fit_frame, holdout)),
-        pl.lit("authority_holdout").alias("evaluation_split"),
-    )
+    fold_predictions: list[pl.DataFrame] = []
+    baseline_predictions: list[pl.DataFrame] = []
+    folds: list[dict[str, Any]] = []
+    failed_folds: list[dict[str, str]] = []
+    for held_out in authorities:
+        fit_frame = training.filter(pl.col("local_authority_code").cast(pl.String) != held_out)
+        holdout = training.filter(pl.col("local_authority_code").cast(pl.String) == held_out)
+        try:
+            _validate_rows(fit_frame, "authority-holdout training")
+            _validate_rows(holdout, "authority holdout")
+            specs = _feature_specs(fit_frame)
+            result = _fit_model(
+                fit_frame["ksi_count"].to_numpy().astype(float),
+                _design_matrix(fit_frame, specs),
+                fit_frame["annual_vehicle_km"].to_numpy().astype(float),
+            )
+            expected = _predict(
+                result,
+                _design_matrix(holdout, specs),
+                holdout["annual_vehicle_km"].to_numpy().astype(float),
+            )
+        except SPFValidationError as error:
+            failure = {"held_out_authority": held_out, "reason": str(error)}
+            failed_folds.append(failure)
+            folds.append({**failure, "status": "failed"})
+            continue
+        fold = holdout.with_columns(
+            pl.Series("expected_ksi", expected),
+            pl.lit("authority_holdout").alias("evaluation_split"),
+        )
+        baseline = holdout.with_columns(
+            pl.Series("expected_ksi", _exposure_rate_predictions(fit_frame, holdout)),
+            pl.lit("authority_holdout").alias("evaluation_split"),
+        )
+        fold_predictions.append(fold)
+        baseline_predictions.append(baseline)
+        folds.append(
+            {
+                "held_out_authority": held_out,
+                "training_rows": fit_frame.height,
+                "holdout_rows": holdout.height,
+                "spf": _detailed_metrics(fold),
+                "exposure_rate_baseline": _detailed_metrics(baseline),
+                "status": "completed",
+            }
+        )
+    if not fold_predictions:
+        return {
+            "available": False,
+            "reason": "all_authority_holdout_folds_failed",
+            "held_out_authorities": authorities,
+            "folds": folds,
+            "failed_folds": failed_folds,
+        }
+    holdout_predictions = pl.concat(fold_predictions)
+    baseline = pl.concat(baseline_predictions)
+    completed_folds = [fold for fold in folds if fold["status"] == "completed"]
     return {
         "available": True,
-        "held_out_authority": held_out,
-        "training_rows": fit_frame.height,
-        "holdout_rows": holdout.height,
+        "complete": not failed_folds,
+        "held_out_authorities": authorities,
+        "folds": folds,
+        "failed_folds": failed_folds,
+        "training_rows": sum(fold["training_rows"] for fold in completed_folds),
+        "holdout_rows": sum(fold["holdout_rows"] for fold in completed_folds),
         "spf": _detailed_metrics(holdout_predictions),
         "exposure_rate_baseline": _detailed_metrics(baseline),
     }

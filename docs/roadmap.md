@@ -29,7 +29,7 @@
 - completed: ingest and match annual 2019–2024 collision/network evidence
 - completed: join authoritative 2011 urban/rural classification for all contract years
 - completed: run the SPF on the generated 2019–2024 panel with calibration, ranking, subgroup, and authority-holdout diagnostics
-- current: retain the SPF as an evaluated benchmark; the panel readiness and SPF reports now expose authority overlap explicitly, and the model remains unpromoted because the current panel has no genuinely unseen future authorities
+- current: retain the SPF as an evaluated benchmark; panel readiness and SPF reports expose authority overlap, and the SPF now evaluates every training authority in leave-one-authority-out folds; it remains unpromoted because the current panel has no genuinely unseen future authorities
 - next: expand the panel so future and authority-group holdouts are genuinely unseen, then repeat the promotion evaluation
 - next: compare SPF and Empirical Bayes with calibrated ML challengers using temporal and geographic backtests with uncertainty intervals
 

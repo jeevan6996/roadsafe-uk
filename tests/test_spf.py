@@ -77,6 +77,9 @@ def test_spf_writes_future_predictions_and_baseline_comparison(tmp_path: Path) -
     assert report["unseen_authorities"]["unseen_validation"] == []
     assert report["unseen_authorities"]["unseen_test"] == []
     assert report["authority_holdout"]["available"] is True
+    assert report["authority_holdout"]["held_out_authorities"] == ["A", "B", "C", "D"]
+    assert len(report["authority_holdout"]["folds"]) == 4
+    assert report["authority_holdout"]["holdout_rows"] == 16
     assert "no_future_unseen_authorities" in report["promotion_blockers"]
 
 

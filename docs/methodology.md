@@ -97,8 +97,10 @@ exposure-rate baseline. The model is not promoted until future-period,
 unseen-authority, calibration, subgroup, and ranking evidence supports it.
 The current West Yorkshire panel has repeated authorities across all years, so
 the report blocks readiness for the future geographic holdout and also includes
-a deterministic leave-one-authority-out diagnostic as a separate internal
-benchmark.
+deterministic leave-one-authority-out folds for every training authority as a
+separate internal benchmark. The aggregate is not a substitute for a future
+holdout because each fold still uses historical observations from the held-out
+authority.
 
 The network build supports an explicit urban/rural lookup keyed by
 `count_point_id` and `year`. Missing lookup data is represented as null rather
