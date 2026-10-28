@@ -13,6 +13,10 @@ build/
 *.egg-info/
 node_modules/
 apps/web/dist/
+apps/web/test-results/
+apps/web/playwright-report/
+output/playwright/
+.playwright-cli/
 *.tsbuildinfo
 apps/web/vite.config.js
 apps/web/vite.config.d.ts

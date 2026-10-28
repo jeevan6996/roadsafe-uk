@@ -57,8 +57,9 @@ Before any baseline or model is fit, it reports:
 
 - missing training, validation, or test years
 - duplicate segment-year records
-- non-positive or missing exposure
-- missing or negative KSI targets
+- missing, non-finite, or non-positive exposure
+- missing, non-finite, negative, fractional, or out-of-range KSI targets
+- nonnumeric exposure/count types, including text and booleans
 - absent or incomplete fields for every required subgroup
 - fewer than two local-authority groups for geographic holdout
 - no validation or test authority unseen during training
@@ -72,10 +73,21 @@ category, road type, and traffic estimation method flow from the official AADF
 source. Urban/rural status is joined from the documented ONS/Defra small-area
 source rather than inferred from road category or authority.
 
-The exposure-rate baseline applies the same exposure and target validation to
-training, validation, and test rows. Invalid scoring rows are rejected before
-metrics are calculated, rather than allowing missing or negative values to
-produce misleading errors or undefined results.
+The exposure-rate baseline and Empirical Bayes producer apply these numeric
+checks independently to their training and scoring rows, so calling either
+producer directly cannot bypass readiness validation. KSI counts must be
+nonnegative integers representable by an unsigned 64-bit artifact column.
+Integer-valued floats and exact integral Decimals are accepted; scoring exports
+normalise them to `UInt64` for the serving API's strict integer contract. Decimal
+integrality is checked before any floating-point conversion used for finiteness.
+Zero counts remain valid. Rows outside the contract's years are not scored.
+
+Invalid scoring inputs, non-finite derived values and numerical overflow fail
+before successful output artifacts are written. Reports use strict JSON rather
+than emitting NaN or Infinity as if they were valid estimates. These guards do
+not establish calibration, uncertainty validity or model promotion. An I/O
+failure during writing can still leave partial outputs; atomic multi-file
+publication is not claimed by this correction.
 
 The Empirical Bayes screening layer fits a Gamma prior over segment collision
 rates using training years only. Its Poisson-gamma posterior combines the
@@ -101,6 +113,33 @@ deterministic leave-one-authority-out folds for every training authority as a
 separate internal benchmark. The aggregate is not a substitute for a future
 holdout because each fold still uses historical observations from the held-out
 authority.
+
+The SPF report additionally includes `future_authority_holdout`. Each fold fits
+on training years in other authorities and scores only the excluded authority's
+validation/test years. Stable segment identities in that scoring fold are also
+excluded from fitting, even if their authority code changed. Feature encodings
+and the comparison baseline are fitted again inside each fold. Per-fold and
+aggregate validation/test metrics, authority/year membership, failed fits and
+row coverage are recorded. Aggregates cover successful folds only and must not
+be compared with metrics from a different set of rows.
+
+This is an internal spatiotemporal backtest, not untouched external validation.
+It does not resolve feature timing: the current SPF uses scoring-year AADF and
+attributes, rather than a verified prior-year feature snapshot. Reports therefore
+explicitly block promotion with `prior_year_feature_availability_not_verified`.
+Neither a successful fit nor a lower MAE alone makes this a deployable forecast.
+
+The separate [lagged experiment](lagged-benchmark.md) now replaces all declared
+SPF covariates with exact historical snapshots and compares a ridge-Poisson
+model with the same historical-exposure baseline. This establishes calendar
+lagging, not verified publication-time availability. It leaves the original
+same-year benchmark unchanged and retains the promotion block.
+
+Ranking precision is the fraction of selected segment-year rows with at least
+one KSI collision. `mean_ksi_at_10_percent` separately records collisions per
+selected row, which can exceed one. Recall and lift remain collision-count
+weighted: recall is the fraction of all observed KSI collisions captured by
+the selected rows. Tied predictions retain input order.
 
 The network build supports an explicit urban/rural lookup keyed by
 `count_point_id` and `year`. Missing lookup data is represented as null rather

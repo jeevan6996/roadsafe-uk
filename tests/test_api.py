@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
 
-from roadsafe.api.app import app
+from roadsafe.api.app import DATA_PATH, NETWORK_PATH, app
+from roadsafe.pipeline import sha256_file
 
 client = TestClient(app)
 
@@ -37,6 +38,9 @@ def test_metadata_discloses_scope_and_caveat() -> None:
     assert response.status_code == 200
     assert response.json()["records"] == 12
     assert "not a measure of causal risk" in response.json()["caveat"]
+    assert response.json()["collision_sha256"] == sha256_file(DATA_PATH)
+    assert response.json()["network_sha256"] == sha256_file(NETWORK_PATH)
+    assert response.json()["empirical_bayes_sha256"] is None
 
 
 def test_segments_expose_traffic_method_and_geometry() -> None:
@@ -70,3 +74,28 @@ def test_empirical_bayes_is_explicitly_optional() -> None:
     response = client.get("/api/v1/empirical-bayes")
     assert response.status_code == 200
     assert response.json()["available"] is False
+
+
+def test_data_responses_are_bound_to_one_browser_readable_snapshot() -> None:
+    routes = ["metadata", "collisions", "summary", "segments", "network-summary", "empirical-bayes"]
+    tokens = []
+    for route in routes:
+        response = client.get(f"/api/v1/{route}", headers={"Origin": "http://localhost:5173"})
+        assert response.status_code == 200
+        token = response.headers["X-RoadSafe-Snapshot"]
+        assert len(token) == 64
+        int(token, 16)
+        assert "x-roadsafe-snapshot" in response.headers["Access-Control-Expose-Headers"].lower()
+        tokens.append(token)
+    assert len(set(tokens)) == 1
+
+
+def test_snapshot_identity_changes_with_each_source_artifact() -> None:
+    from dataclasses import replace
+
+    from roadsafe.api.app import serving_snapshot
+
+    snapshot = serving_snapshot()
+    for field in ("collision_sha256", "network_sha256", "empirical_bayes_sha256"):
+        replacement = replace(snapshot, **{field: "f" * 64})
+        assert replacement.identity != snapshot.identity

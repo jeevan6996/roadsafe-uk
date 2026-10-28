@@ -5,9 +5,10 @@ export default defineConfig({
   plugins: [react()],
   test: {
     environment: "jsdom",
+    include: ["src/**/*.test.{ts,tsx}"],
   },
   build: {
-    // MapLibre is lazy-loaded as an isolated engine chunk; the app shell stays below 210 kB.
+    // Keep the lazy-loaded MapLibre engine separate from the application shell.
     chunkSizeWarningLimit: 1100,
   },
   server: {

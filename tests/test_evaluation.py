@@ -185,6 +185,79 @@ def test_panel_readiness_blocks_invalid_exposure_and_target() -> None:
     assert readiness["readiness_checks"]["target_values_valid"] is False
 
 
+@pytest.mark.parametrize(
+    "column,value,kind",
+    [
+        ("annual_vehicle_km", value, "exposure")
+        for value in [None, float("nan"), float("inf"), -float("inf"), 0.0, -1.0]
+    ]
+    + [
+        ("ksi_count", value, "target")
+        for value in [None, float("nan"), float("inf"), -float("inf"), -1.0, 0.5, float(2**64)]
+    ],
+)
+def test_readiness_cannot_certify_invalid_numeric_values(
+    column: str, value: float | None, kind: str
+) -> None:
+    contract = read_evaluation_contract(ROOT / "configs" / "evaluation-v1.json")
+    panel = pl.concat(
+        [panel_frame(year, unseen_future_authority=True) for year in range(2019, 2025)]
+    ).with_columns(
+        pl.when((pl.col("year") == 2024) & (pl.col("count_point_id") == 1))
+        .then(pl.lit(value, dtype=pl.Float64))
+        .otherwise(pl.col(column).cast(pl.Float64))
+        .alias(column)
+    )
+    readiness = assess_panel_readiness(panel, contract)
+    assert readiness["status"] == "blocked"
+    assert readiness[f"invalid_{kind}_rows"] == 1
+    assert f"invalid_{kind}_rows" in readiness["blockers"]
+    assert readiness["readiness_checks"][f"{kind}_values_valid"] is False
+
+
+@pytest.mark.parametrize(
+    "column,kind", [("annual_vehicle_km", "exposure"), ("ksi_count", "target")]
+)
+@pytest.mark.parametrize("dtype", [pl.String, pl.Boolean])
+def test_readiness_blocks_non_numeric_column_types(
+    column: str, kind: str, dtype: pl.DataType
+) -> None:
+    contract = read_evaluation_contract(ROOT / "configs" / "evaluation-v1.json")
+    panel = panel_frame(2024).with_columns(pl.col(column).cast(dtype))
+    readiness = assess_panel_readiness(panel, contract)
+    assert readiness["status"] == "blocked"
+    assert readiness[f"invalid_{kind}_rows"] == panel.height
+
+
+def test_readiness_accepts_zero_and_integral_float_counts() -> None:
+    contract = read_evaluation_contract(ROOT / "configs" / "evaluation-v1.json")
+    panel = pl.concat(
+        [panel_frame(year, unseen_future_authority=True) for year in range(2019, 2025)]
+    ).with_columns(pl.col("ksi_count").cast(pl.Float64))
+    readiness = assess_panel_readiness(panel, contract)
+    assert readiness["status"] == "ready-for-evaluation"
+    assert readiness["invalid_target_rows"] == 0
+
+
+@pytest.mark.parametrize("column", ["annual_vehicle_km", "ksi_count"])
+def test_readiness_accepts_valid_decimal_columns(column: str) -> None:
+    contract = read_evaluation_contract(ROOT / "configs" / "evaluation-v1.json")
+    panel = pl.concat(
+        [panel_frame(year, unseen_future_authority=True) for year in range(2019, 2025)]
+    ).with_columns(pl.col(column).cast(pl.Decimal(20, 2)))
+    assert assess_panel_readiness(panel, contract)["status"] == "ready-for-evaluation"
+
+
+def test_readiness_excludes_numeric_corruption_outside_contract_years() -> None:
+    contract = read_evaluation_contract(ROOT / "configs" / "evaluation-v1.json")
+    panel = pl.concat(
+        [panel_frame(year, unseen_future_authority=True) for year in range(2019, 2025)]
+    ).with_columns(pl.col("ksi_count").cast(pl.Float64))
+    unrelated = panel_frame(2018).with_columns(pl.lit(float("nan")).alias("ksi_count"))
+    readiness = assess_panel_readiness(pl.concat([unrelated, panel]), contract)
+    assert readiness["status"] == "ready-for-evaluation"
+
+
 def test_build_segment_year_panel_requires_inputs(tmp_path: Path) -> None:
     with pytest.raises(PanelValidationError, match="At least one annual evidence"):
         build_segment_year_panel([], ROOT / "configs" / "evaluation-v1.json", tmp_path / "output")

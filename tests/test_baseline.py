@@ -78,3 +78,67 @@ def test_build_exposure_baseline_rejects_invalid_scoring_rows(tmp_path: Path) ->
         match="validation and test years contain 2 invalid rows",
     ):
         build_exposure_baseline(panel_path, contract_path(tmp_path), tmp_path / "out")
+
+
+@pytest.mark.parametrize("year", [2019, 2021])
+@pytest.mark.parametrize(
+    "column,value",
+    [
+        ("annual_vehicle_km", value)
+        for value in [None, float("nan"), float("inf"), -float("inf"), 0.0, -1.0]
+    ]
+    + [
+        ("ksi_count", value)
+        for value in [None, float("nan"), float("inf"), -float("inf"), -1.0, 0.5, float(2**64)]
+    ],
+)
+def test_baseline_rejects_invalid_numeric_values_before_writing(
+    tmp_path: Path, year: int, column: str, value: float | None
+) -> None:
+    source = tmp_path / "panel.parquet"
+    panel_frame().with_columns(
+        pl.when((pl.col("year") == year) & (pl.col("segment_key") == "a"))
+        .then(pl.lit(value, dtype=pl.Float64))
+        .otherwise(pl.col(column).cast(pl.Float64))
+        .alias(column)
+    ).write_parquet(source)
+    output = tmp_path / "out"
+    with pytest.raises(BaselineValidationError, match="contain 1 invalid rows"):
+        build_exposure_baseline(source, contract_path(tmp_path), output)
+    assert not output.exists()
+
+
+@pytest.mark.parametrize("column", ["annual_vehicle_km", "ksi_count"])
+@pytest.mark.parametrize("dtype", [pl.String, pl.Boolean])
+def test_baseline_rejects_non_numeric_columns(
+    tmp_path: Path, column: str, dtype: pl.DataType
+) -> None:
+    source = tmp_path / "panel.parquet"
+    panel_frame().with_columns(pl.col(column).cast(dtype)).write_parquet(source)
+    output = tmp_path / "out"
+    with pytest.raises(BaselineValidationError, match="invalid rows"):
+        build_exposure_baseline(source, contract_path(tmp_path), output)
+    assert not output.exists()
+
+
+@pytest.mark.parametrize("year,column", [(2019, "annual_vehicle_km"), (2021, "annual_vehicle_km")])
+def test_baseline_rejects_non_finite_derived_values(tmp_path: Path, year: int, column: str) -> None:
+    source = tmp_path / "panel.parquet"
+    panel_frame().with_columns(
+        pl.when(pl.col("year") == year)
+        .then(1e308)
+        .otherwise(pl.col(column).cast(pl.Float64))
+        .alias(column)
+    ).write_parquet(source)
+    output = tmp_path / "out"
+    with pytest.raises(BaselineValidationError, match="finite"):
+        build_exposure_baseline(source, contract_path(tmp_path), output)
+    assert not output.exists()
+
+
+@pytest.mark.parametrize("column", ["annual_vehicle_km", "ksi_count"])
+def test_baseline_accepts_valid_decimal_columns(tmp_path: Path, column: str) -> None:
+    source = tmp_path / "panel.parquet"
+    panel_frame().with_columns(pl.col(column).cast(pl.Decimal(20, 2))).write_parquet(source)
+    report = build_exposure_baseline(source, contract_path(tmp_path), tmp_path / "out")
+    assert report["training_rate_per_million_vehicle_km"] == 2.5

@@ -1,0 +1,35 @@
+{
+  "schema_version": "1.0",
+  "sources": [
+    {
+      "kind": "traffic",
+      "year": 2021,
+      "published_on": "2022-09-28",
+      "release_evidence": "https://www.gov.uk/government/statistics/road-traffic-estimates-in-great-britain-2021"
+    },
+    {
+      "kind": "traffic",
+      "year": 2022,
+      "published_on": "2023-07-13",
+      "release_evidence": "https://www.gov.uk/government/statistics/road-traffic-estimates-in-great-britain-2022"
+    },
+    {
+      "kind": "traffic",
+      "year": 2023,
+      "published_on": "2024-05-22",
+      "release_evidence": "https://www.gov.uk/government/statistics/road-traffic-estimates-in-great-britain-2023"
+    },
+    {
+      "kind": "collisions",
+      "year": 2021,
+      "published_on": "2022-09-29",
+      "release_evidence": "https://www.gov.uk/government/statistics/reported-road-casualties-great-britain-annual-report-2021"
+    },
+    {
+      "kind": "collisions",
+      "year": 2022,
+      "published_on": "2023-09-28",
+      "release_evidence": "https://www.gov.uk/government/statistics/reported-road-casualties-great-britain-annual-report-2022"
+    }
+  ]
+}

@@ -49,7 +49,11 @@ def sha256_file(path: Path) -> str:
 
 
 def read_collisions(path: Path) -> pl.DataFrame:
-    frame = pl.read_csv(path, infer_schema_length=10_000, null_values=["", "-1"])
+    frame = (
+        pl.read_parquet(path)
+        if path.suffix.lower() == ".parquet"
+        else pl.read_csv(path, infer_schema_length=10_000, null_values=["", "-1"])
+    )
     missing = REQUIRED_COLUMNS.difference(frame.columns)
     if missing:
         raise DataValidationError(f"Missing required columns: {', '.join(sorted(missing))}")
@@ -62,7 +66,9 @@ def read_collisions(path: Path) -> pl.DataFrame:
     if duplicate_ids:
         raise DataValidationError(f"Found {duplicate_ids} duplicate collision identifiers")
 
-    invalid_severity = frame.filter(~pl.col("collision_severity").is_in([1, 2, 3])).height
+    invalid_severity = frame.filter(
+        pl.col("collision_severity").is_null() | ~pl.col("collision_severity").is_in([1, 2, 3])
+    ).height
     if invalid_severity:
         raise DataValidationError(f"Found {invalid_severity} invalid severity values")
 
@@ -91,6 +97,13 @@ def build_pilot(source: Path, output: Path, year: int | None = None) -> dict[str
         pl.col("longitude").is_null() | pl.col("latitude").is_null()
     ).height
 
+    if source_frame.schema["date"] == pl.String:
+        date = pl.col("date").str.strptime(pl.Date, "%d/%m/%Y", strict=False)
+    elif source_frame.schema["date"] == pl.Date:
+        date = pl.col("date")
+    else:
+        raise DataValidationError("Collision date column must have dtype String or Date")
+
     pilot = (
         source_frame.filter(
             pl.col("longitude").is_between(
@@ -102,7 +115,7 @@ def build_pilot(source: Path, output: Path, year: int | None = None) -> dict[str
         )
         .select(sorted(REQUIRED_COLUMNS))
         .with_columns(
-            pl.col("date").str.strptime(pl.Date, "%d/%m/%Y", strict=False),
+            date,
             pl.col("collision_index").cast(pl.String),
         )
         .sort(["date", "collision_index"])

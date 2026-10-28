@@ -15,7 +15,7 @@ from roadsafe.network import (
     read_road_segments,
     read_urban_rural_classification,
 )
-from roadsafe.pipeline import read_collisions
+from roadsafe.pipeline import DataValidationError, read_collisions
 
 FIXTURES = Path(__file__).parent / "fixtures"
 COLLISIONS = FIXTURES / "dft-collisions-west-yorkshire-2024.csv"
@@ -68,6 +68,43 @@ def test_build_network_writes_evidence_and_diagnostics(tmp_path: Path) -> None:
     geojson = json.loads((tmp_path / "segment-evidence-2024.geojson").read_text())
     assert len(geojson["features"]) == 6
     assert sum(feature["properties"]["collision_count"] for feature in geojson["features"]) == 2
+
+
+@pytest.mark.parametrize("suffix", ["csv", "parquet"])
+@pytest.mark.parametrize("corruption", ["duplicate", "null-severity"])
+def test_network_rejects_invalid_collisions_before_writing_artifacts(
+    tmp_path: Path, suffix: str, corruption: str
+) -> None:
+    frame = read_collisions(COLLISIONS)
+    if corruption == "duplicate":
+        frame = pl.concat([frame, frame.head(1)])
+    else:
+        frame = frame.with_columns(
+            pl.when(pl.int_range(pl.len()) == 0)
+            .then(None)
+            .otherwise(pl.col("collision_severity"))
+            .alias("collision_severity")
+        )
+    source = tmp_path / f"invalid.{suffix}"
+    if suffix == "csv":
+        frame.write_csv(source)
+    else:
+        frame.write_parquet(source)
+    output = tmp_path / "network"
+    with pytest.raises(DataValidationError):
+        build_network_evidence(source, ROADS, AADF, output)
+    assert not output.exists()
+
+
+def test_network_parquet_matches_csv_evidence(tmp_path: Path) -> None:
+    source = tmp_path / "collisions.parquet"
+    read_collisions(COLLISIONS).write_parquet(source)
+    csv_report = build_network_evidence(COLLISIONS, ROADS, AADF, tmp_path / "csv")
+    parquet_report = build_network_evidence(source, ROADS, AADF, tmp_path / "parquet")
+    assert parquet_report["match_status_counts"] == csv_report["match_status_counts"]
+    assert pl.read_parquet(tmp_path / "csv/segment-evidence-2024.parquet").equals(
+        pl.read_parquet(tmp_path / "parquet/segment-evidence-2024.parquet")
+    )
 
 
 def test_matching_marks_near_equal_candidates_ambiguous() -> None:

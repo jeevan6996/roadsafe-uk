@@ -272,11 +272,7 @@ def build_network_evidence(
     year: int = 2024,
     urban_rural_path: Path | None = None,
 ) -> dict[str, Any]:
-    collisions = (
-        pl.read_parquet(collision_path)
-        if collision_path.suffix == ".parquet"
-        else read_collisions(collision_path)
-    )
+    collisions = read_collisions(collision_path)
     collision_years = collisions["collision_year"].drop_nulls().unique().to_list()
     if collision_years != [year]:
         raise NetworkValidationError(

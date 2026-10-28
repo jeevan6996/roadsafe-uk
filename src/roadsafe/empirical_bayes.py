@@ -47,13 +47,30 @@ def build_empirical_bayes_screening(
 
     _validate_rows(training, "training")
     _validate_rows(scoring, "validation and test")
-    prior_rate, shape = _fit_prior(training)
-    exposure = scoring["annual_vehicle_km"].to_numpy().astype(float)
-    observed = scoring["ksi_count"].to_numpy().astype(float)
-    prior_mean = exposure * prior_rate
-    posterior_mean = exposure * (shape + observed) / (shape / prior_rate + exposure)
-    posterior_variance = posterior_mean + posterior_mean**2 / shape
-    excess = np.maximum(observed - posterior_mean, 0.0)
+    scoring = scoring.with_columns(pl.col("ksi_count").cast(pl.UInt64))
+    try:
+        with np.errstate(over="raise", invalid="raise", divide="raise"):
+            prior_rate, shape = _fit_prior(training)
+            if not np.isfinite(shape) or shape <= 0:
+                raise EmpiricalBayesValidationError(
+                    "Prior fit produced non-finite or invalid shape"
+                )
+            exposure = scoring["annual_vehicle_km"].to_numpy().astype(float)
+            observed = scoring["ksi_count"].to_numpy().astype(float)
+            prior_mean = exposure * prior_rate
+            posterior_mean = exposure * (shape + observed) / (shape / prior_rate + exposure)
+            posterior_variance = posterior_mean + posterior_mean**2 / shape
+            excess = np.maximum(observed - posterior_mean, 0.0)
+    except FloatingPointError as error:
+        raise EmpiricalBayesValidationError(
+            "Empirical Bayes calculation produced non-finite values or overflow"
+        ) from error
+
+    for values in (prior_mean, posterior_mean, posterior_variance, excess):
+        if not np.isfinite(values).all() or (values < 0).any():
+            raise EmpiricalBayesValidationError(
+                "Empirical Bayes produced non-finite or negative output"
+            )
 
     predictions = scoring.with_columns(
         pl.Series("prior_expected_ksi", prior_mean),
@@ -66,10 +83,15 @@ def build_empirical_bayes_screening(
         .alias("evaluation_split"),
     )
 
-    output.mkdir(parents=True, exist_ok=True)
     prediction_path = output / "empirical-bayes-screening.parquet"
     report_path = output / "empirical-bayes-screening-report.json"
-    predictions.write_parquet(prediction_path)
+    try:
+        with np.errstate(over="raise", invalid="raise", divide="raise"):
+            metrics = _screening_metrics(predictions)
+    except FloatingPointError as error:
+        raise EmpiricalBayesValidationError(
+            "Screening metrics produced non-finite values"
+        ) from error
     report = {
         "generated_at": datetime.now(UTC).isoformat(),
         "method": "Poisson-gamma Empirical Bayes retrospective frequency screening",
@@ -81,14 +103,22 @@ def build_empirical_bayes_screening(
         "scoring_rows": scoring.height,
         "prior_rate_per_vehicle_km": prior_rate,
         "prior_shape": shape,
-        "metrics": _screening_metrics(predictions),
+        "metrics": metrics,
         "panel": str(panel_path),
         "panel_sha256": sha256_file(panel_path),
         "contract": str(contract_path),
         "contract_sha256": sha256_file(contract_path),
         "output": str(prediction_path),
     }
-    report_path.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    try:
+        report_json = json.dumps(report, indent=2, sort_keys=True, allow_nan=False) + "\n"
+    except ValueError as error:
+        raise EmpiricalBayesValidationError(
+            "Screening report contains non-finite values"
+        ) from error
+    output.mkdir(parents=True, exist_ok=True)
+    predictions.write_parquet(prediction_path)
+    report_path.write_text(report_json, encoding="utf-8")
     return report
 
 
@@ -108,11 +138,17 @@ def _fit_prior(training: pl.DataFrame) -> tuple[float, float]:
 
 
 def _validate_rows(frame: pl.DataFrame, label: str) -> None:
+    if any(not frame.schema[column].is_numeric() for column in ("annual_vehicle_km", "ksi_count")):
+        raise EmpiricalBayesValidationError(f"{label} years contain {frame.height} invalid rows")
     invalid = frame.filter(
         pl.col("annual_vehicle_km").is_null()
+        | ~pl.col("annual_vehicle_km").cast(pl.Float64).is_finite()
         | (pl.col("annual_vehicle_km") <= 0)
         | pl.col("ksi_count").is_null()
+        | ~pl.col("ksi_count").cast(pl.Float64).is_finite()
         | (pl.col("ksi_count") < 0)
+        | (pl.col("ksi_count") != pl.col("ksi_count").floor())
+        | pl.col("ksi_count").cast(pl.UInt64, strict=False).is_null()
     ).height
     if invalid:
         raise EmpiricalBayesValidationError(f"{label} years contain {invalid} invalid rows")

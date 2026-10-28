@@ -93,12 +93,26 @@ def assess_panel_readiness(panel: pl.DataFrame, contract: EvaluationContract) ->
         if incomplete:
             incomplete_subgroup_rows[subgroup] = incomplete
 
-    invalid_exposure = contract_panel.filter(
-        pl.col("annual_vehicle_km").is_null() | (pl.col("annual_vehicle_km") <= 0)
-    ).height
-    invalid_target = contract_panel.filter(
-        pl.col("ksi_count").is_null() | (pl.col("ksi_count") < 0)
-    ).height
+    invalid_exposure = (
+        contract_panel.filter(
+            pl.col("annual_vehicle_km").is_null()
+            | ~pl.col("annual_vehicle_km").cast(pl.Float64).is_finite()
+            | (pl.col("annual_vehicle_km") <= 0)
+        ).height
+        if contract_panel.schema["annual_vehicle_km"].is_numeric()
+        else contract_panel.height
+    )
+    invalid_target = (
+        contract_panel.filter(
+            pl.col("ksi_count").is_null()
+            | ~pl.col("ksi_count").cast(pl.Float64).is_finite()
+            | (pl.col("ksi_count") < 0)
+            | (pl.col("ksi_count") != pl.col("ksi_count").floor())
+            | pl.col("ksi_count").cast(pl.UInt64, strict=False).is_null()
+        ).height
+        if contract_panel.schema["ksi_count"].is_numeric()
+        else contract_panel.height
+    )
     complete_history = (
         contract_panel.group_by("segment_key")
         .agg(pl.col("year").n_unique().alias("years"))

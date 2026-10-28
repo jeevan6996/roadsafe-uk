@@ -37,31 +37,19 @@ def build_exposure_baseline(panel_path: Path, contract_path: Path, output: Path)
     if scoring.is_empty():
         raise BaselineValidationError("validation and test years contain no panel rows")
 
-    invalid = training.filter(
-        pl.col("annual_vehicle_km").is_null()
-        | (pl.col("annual_vehicle_km") <= 0)
-        | pl.col("ksi_count").is_null()
-        | (pl.col("ksi_count") < 0)
-    ).height
-    if invalid:
-        raise BaselineValidationError(f"training years contain {invalid} invalid rows")
+    _validate_rows(training, "training")
+    _validate_rows(scoring, "validation and test")
+    scoring = scoring.with_columns(pl.col("ksi_count").cast(pl.UInt64))
 
-    invalid_scoring = scoring.filter(
-        pl.col("annual_vehicle_km").is_null()
-        | (pl.col("annual_vehicle_km") <= 0)
-        | pl.col("ksi_count").is_null()
-        | (pl.col("ksi_count") < 0)
-    ).height
-    if invalid_scoring:
-        raise BaselineValidationError(
-            f"validation and test years contain {invalid_scoring} invalid rows"
-        )
-
-    total_exposure_mvk = float(training["annual_vehicle_km"].sum()) / 1_000_000
-    total_ksi = float(training["ksi_count"].sum())
-    if not total_exposure_mvk or total_exposure_mvk <= 0:
-        raise BaselineValidationError("training exposure must be positive")
+    total_exposure_mvk = float(training["annual_vehicle_km"].cast(pl.Float64).sum()) / 1_000_000
+    total_ksi = float(training["ksi_count"].cast(pl.Float64).sum())
+    if not math.isfinite(total_exposure_mvk) or total_exposure_mvk <= 0:
+        raise BaselineValidationError("training exposure must be finite and positive")
+    if not math.isfinite(total_ksi) or total_ksi < 0:
+        raise BaselineValidationError("training KSI total must be finite and nonnegative")
     training_rate = total_ksi / total_exposure_mvk
+    if not math.isfinite(training_rate):
+        raise BaselineValidationError("training rate must be finite")
 
     predictions = scoring.with_columns(
         (pl.col("annual_vehicle_km") / 1_000_000 * training_rate).alias("expected_ksi")
@@ -71,10 +59,10 @@ def build_exposure_baseline(panel_path: Path, contract_path: Path, output: Path)
         .otherwise(pl.lit("test"))
         .alias("evaluation_split")
     )
-    output.mkdir(parents=True, exist_ok=True)
+    if not predictions["expected_ksi"].is_finite().all() or (predictions["expected_ksi"] < 0).any():
+        raise BaselineValidationError("Baseline predictions must be finite and nonnegative")
     prediction_path = output / "exposure-baseline-predictions.parquet"
     report_path = output / "exposure-baseline-report.json"
-    predictions.write_parquet(prediction_path)
     report = {
         "generated_at": datetime.now(UTC).isoformat(),
         "method": "global training KSI rate with annual vehicle-km exposure offset",
@@ -91,8 +79,31 @@ def build_exposure_baseline(panel_path: Path, contract_path: Path, output: Path)
         "contract_sha256": sha256_file(contract_path),
         "output": str(prediction_path),
     }
-    report_path.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    try:
+        report_json = json.dumps(report, indent=2, sort_keys=True, allow_nan=False) + "\n"
+    except ValueError as error:
+        raise BaselineValidationError("Baseline report contains non-finite values") from error
+    output.mkdir(parents=True, exist_ok=True)
+    predictions.write_parquet(prediction_path)
+    report_path.write_text(report_json, encoding="utf-8")
     return report
+
+
+def _validate_rows(frame: pl.DataFrame, label: str) -> None:
+    if any(not frame.schema[column].is_numeric() for column in ("annual_vehicle_km", "ksi_count")):
+        raise BaselineValidationError(f"{label} years contain {frame.height} invalid rows")
+    invalid = frame.filter(
+        pl.col("annual_vehicle_km").is_null()
+        | ~pl.col("annual_vehicle_km").cast(pl.Float64).is_finite()
+        | (pl.col("annual_vehicle_km") <= 0)
+        | pl.col("ksi_count").is_null()
+        | ~pl.col("ksi_count").cast(pl.Float64).is_finite()
+        | (pl.col("ksi_count") < 0)
+        | (pl.col("ksi_count") != pl.col("ksi_count").floor())
+        | pl.col("ksi_count").cast(pl.UInt64, strict=False).is_null()
+    ).height
+    if invalid:
+        raise BaselineValidationError(f"{label} years contain {invalid} invalid rows")
 
 
 def _metrics_by_split(predictions: pl.DataFrame) -> dict[str, dict[str, float]]:
@@ -102,7 +113,7 @@ def _metrics_by_split(predictions: pl.DataFrame) -> dict[str, dict[str, float]]:
         if frame.is_empty():
             continue
         errors = [
-            float(actual - expected)
+            float(actual) - float(expected)
             for actual, expected in frame.select(["ksi_count", "expected_ksi"]).iter_rows()
         ]
         metrics[split] = {

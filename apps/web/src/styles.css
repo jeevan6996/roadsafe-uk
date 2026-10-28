@@ -8,7 +8,8 @@
 
 * { box-sizing: border-box; }
 body { margin: 0; min-width: 320px; min-height: 100vh; overflow: hidden; }
-button, input { font: inherit; letter-spacing: 0; }
+button, input, select { font: inherit; letter-spacing: 0; }
+button:focus-visible, select:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px solid #2563eb; outline-offset: 3px; }
 button { color: inherit; }
 
 .app-shell {
@@ -82,7 +83,7 @@ button { color: inherit; }
   color: #6d7873;
   background: #f8faf9;
 }
-.search-field input { width: 100%; border: 0; outline: 0; color: #17211c; background: transparent; }
+.search-field input { width: 100%; border: 0; color: #17211c; background: transparent; }
 .icon-button { width: 36px; height: 36px; border: 1px solid #d7ddda; border-radius: 5px; background: #ffffff; }
 .icon-button:hover { background: #f1f4f2; }
 
@@ -162,8 +163,9 @@ button { color: inherit; }
 .bar-track { display: flex; width: 100%; height: 11px; margin: 13px 0 10px; border-radius: 3px; overflow: hidden; background: #e7ebe9; }
 .bar { height: 100%; }
 .bar.serious, .dot.serious { background: #d97706; }
+.bar.fatal, .dot.fatal { background: #b91c1c; }
 .bar.slight, .dot.slight { background: #087f6b; }
-.legend { display: flex; gap: 15px; color: #5f6b66; font-size: 11px; }
+.legend { display: flex; flex-wrap: wrap; gap: 15px; color: #5f6b66; font-size: 11px; }
 .dot { display: inline-block; width: 8px; height: 8px; margin-right: 5px; border-radius: 50%; }
 .notice { display: flex; gap: 9px; margin-top: 18px; padding: 12px; border-left: 3px solid #2563eb; color: #42514b; background: #eef4ff; font-size: 11px; line-height: 1.5; }
 .notice svg { flex: 0 0 auto; margin-top: 1px; color: #2563eb; }
@@ -178,6 +180,35 @@ button { color: inherit; }
 .detail-list div { display: flex; justify-content: space-between; gap: 16px; padding: 12px 0; border-bottom: 1px solid #e7ebe9; }
 .detail-list dt { color: #68736e; font-size: 12px; }
 .detail-list dd { margin: 0; font-size: 12px; font-weight: 700; text-align: right; }
+.detail-list dd, .panel-heading h2 { overflow-wrap: anywhere; }
+.detail-list dt { flex-shrink: 0; max-width: 50%; }
+.investigation-tools { padding-bottom: 12px; }
+.investigation-tools label { display: block; font-size: 12px; color: #58645f; margin-bottom: 8px; }
+.investigation-tools select { width: 100%; min-width: 0; height: 38px; padding: 0 10px; color: #17211c; border: 1px solid #c7d2cc; border-radius: 4px; background: white; }
+.investigation-actions { display: flex; gap: 8px; margin-top: 10px; }
+.export-button { display: flex; align-items: center; justify-content: center; gap: 8px; flex: 1; border: 1px solid #087f6b; border-radius: 4px; background: #087f6b; color: white; font-size: 12px; cursor: pointer; }
+.export-button:disabled, .icon-button:disabled { opacity: .45; cursor: not-allowed; }
+.export-status { display: block; min-height: 20px; margin-top: 6px; font-size: 11px; color: #075f51; }
+.source-details { border-top: 1px solid #dfe4e1; margin-top: 24px; padding-top: 12px; font-size: 11px; color: #58645f; line-height: 1.6; }
+.source-details summary { cursor: pointer; font-weight: 650; }
+.source-details a { color: #195db8; }
+.road-collisions { padding-bottom: 16px; margin-bottom: 16px; border-bottom: 1px solid #dfe4e1; }
+.road-collisions h3 { margin: 0 0 10px; font-size: 13px; overflow-wrap: anywhere; }
+.road-severity { display: flex; flex-wrap: wrap; gap: 4px; }
+.road-severity button { min-height: 36px; padding: 6px 10px; border: 1px solid #d7ddda; border-radius: 4px; background: white; font-size: 12px; cursor: pointer; }
+.road-severity button[aria-pressed="true"] { background: #273630; color: white; border-color: #273630; }
+.matching-state { font-size: 12px; color: #58645f; overflow-wrap: anywhere; }
+.retry-button { display: flex; align-items: center; gap: 6px; min-height: 36px; border: 1px solid #c7d2cc; border-radius: 4px; background: white; font-size: 12px; cursor: pointer; }
+.collision-list { list-style: none; padding: 3px; margin: 0; max-height: 180px; overflow: auto; }
+.collision-list button { width: 100%; min-height: 40px; display: flex; align-items: center; gap: 5px; text-align: left; padding: 8px 5px; border: 0; border-bottom: 1px solid #e7ebe9; background: white; font-size: 11px; cursor: pointer; }
+.collision-list button[aria-pressed="true"] { background: #eef4ff; }
+.collision-list .dot { flex: 0 0 8px; }
+.collision-list span { overflow-wrap: anywhere; min-width: 0; }
+.collision-list span:last-child { margin-left: auto; }
+.collision-heading { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 12px; }
+.collision-heading h3 { margin: 0; }
+.collision-heading .icon-button { flex: 0 0 36px; }
+.severity-1 { color: #a92727; background: #fceaea; }
 .detail-list.compact { margin-top: 7px; }
 
 .statusbar {
@@ -197,16 +228,18 @@ button { color: inherit; }
 
 @media (max-width: 800px) {
   body { overflow: auto; }
-  .app-shell { grid-template-columns: 48px minmax(0, 1fr); grid-template-rows: 58px 44px 55vh auto 32px; height: auto; min-height: 100vh; }
+  .app-shell { grid-template-columns: 48px minmax(0, 1fr); grid-template-rows: 108px 44px 45vh auto 32px; height: auto; min-height: 100vh; }
   .navigation { grid-row: 1 / 6; padding-inline: 4px; }
   .brand-mark, .nav-button { width: 36px; }
-  .topbar { grid-column: 2; padding: 0 10px; }
+  .topbar { grid-column: 2; padding: 10px; flex-wrap: wrap; gap: 8px; }
   .topbar h1 { font-size: 14px; }
-  .topbar > div span, .search-field { display: none; }
+  .topbar > div span { display: none; }
+  .search-field { display: flex; width: 100%; margin: 0; }
   .modebar { grid-column: 2; overflow-x: auto; }
   .map-region { grid-column: 2; grid-row: 3; }
   .evidence-panel { grid-column: 2; grid-row: 4; min-height: 330px; border-top: 1px solid #dfe4e1; border-left: 0; }
   .statusbar { grid-column: 2; grid-row: 5; gap: 8px; overflow: hidden; white-space: nowrap; }
   .status-right { display: none !important; }
   .severity-control { right: 8px; left: 8px; overflow-x: auto; }
+  .exposure-legend { left: 8px; right: 8px; flex-wrap: wrap; }
 }

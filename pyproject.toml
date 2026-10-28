@@ -23,6 +23,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+poc = ["scikit-learn>=1.7,<2"]
 dev = [
   "httpx2>=2.7",
   "mypy>=1.17",
@@ -56,3 +57,7 @@ select = ["E", "F", "I", "B", "UP", "N", "SIM"]
 python_version = "3.12"
 strict = true
 packages = ["roadsafe"]
+
+[[tool.mypy.overrides]]
+module = ["sklearn.*"]
+ignore_missing_imports = true
