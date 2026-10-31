@@ -39,9 +39,13 @@ forecasting service.
 
 ### Outstanding release gates
 
+Bundle verification checks aggregate collision totals and count/exposure/rate
+consistency, including rounded fixture values. This is not independent validation
+of spatial assignments, model provenance or forecasting quality.
+
 The Empirical Bayes uncertainty field remains an unvalidated proxy pending its
-mathematical contract correction. Cross-artifact bundle consistency, independent
-network/observed error recovery, and remaining UI corrections are tracked in the
+mathematical contract correction. Independent network/observed error recovery
+and remaining UI corrections are tracked in the
 [release-corrections plan](docs/superpowers/plans/2026-10-27-release-corrections.md).
 Historical feature publication dates, derived-panel lineage, calibration and
 fresh external validation still block predictive-model promotion. Working

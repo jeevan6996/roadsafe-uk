@@ -52,7 +52,10 @@ one portable directory. `bundle.json` records their SHA-256 hashes, 2024 scope,
 counts, attribution and explicit non-promotion status. Building rejects existing
 output directories; incomplete builds have no completion manifest. Verification
 checks file containment, hashes, reporting year, unique identities, declared
-counts and retrospective key/count alignment. The current bounded profiles are
+counts, aggregate collision/KSI/non-KSI bounds, positive finite exposure,
+count/rate consistency and retrospective key/count alignment. Rounded fixture
+rates remain supported. These checks do not require every source collision to
+match a major-road link. The current bounded profiles are
 the 12-record/6-link fixture and the 1,791-record/256-link pilot, not arbitrary
 national releases.
 

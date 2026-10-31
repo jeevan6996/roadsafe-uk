@@ -1,6 +1,7 @@
 """Portable, validated serving artifacts for the bounded 2024 demonstration."""
 
 import json
+import math
 import shutil
 from pathlib import Path
 from typing import Any, Literal
@@ -8,7 +9,8 @@ from typing import Any, Literal
 import polars as pl
 from pydantic import BaseModel, ConfigDict, Field
 
-from roadsafe.domain import CollisionPoint, NetworkFeature, RetrospectiveRecord
+from roadsafe.domain import CollisionPoint, NetworkFeature, NetworkProperties, RetrospectiveRecord
+from roadsafe.network import RATE_SCALE
 from roadsafe.pipeline import REQUIRED_COLUMNS, sha256_file
 
 Profile = Literal["fixture", "pilot"]
@@ -67,6 +69,32 @@ def inspect_artifacts(
     return records, segments
 
 
+def _validate_network_exposure(properties: NetworkProperties, source: dict[str, Any]) -> None:
+    try:
+        # Preserve the producer's 365-day convention and four-decimal fixture rates.
+        exposure = properties.all_motor_vehicles * 365 * properties.link_length_km
+        if not math.isfinite(exposure) or exposure <= 0:
+            raise ValueError("Network exposure must be finite and positive")
+        if "annual_vehicle_km" in source:
+            declared = source["annual_vehicle_km"]
+            if (
+                type(declared) not in (int, float)
+                or not math.isfinite(declared)
+                or not math.isclose(declared, exposure, rel_tol=1e-12, abs_tol=0)
+            ):
+                raise ValueError("Network annual vehicle-km differs from its exposure inputs")
+        rate = properties.collision_count / exposure * RATE_SCALE
+        if not math.isfinite(rate) or not math.isclose(
+            properties.collision_rate_per_100m_vehicle_km,
+            rate,
+            rel_tol=1e-12,
+            abs_tol=0.00005 + math.ulp(rate),
+        ):
+            raise ValueError("Network collision rate differs from its count and exposure")
+    except (OverflowError, ZeroDivisionError) as error:
+        raise ValueError("Network exposure and rate must be finite") from error
+
+
 def validate_serving_data(
     frame: pl.DataFrame, collection: Any, retrospective: pl.DataFrame | None
 ) -> tuple[int, int]:
@@ -97,11 +125,13 @@ def validate_serving_data(
         raise ValueError("Network artifact has no features")
     keys: list[str] = []
     observed: dict[str, int] = {}
+    matched_collisions = 0
+    matched_ksi = 0
     for feature in features:
         if not isinstance(feature, dict) or not isinstance(feature.get("properties"), dict):
             raise ValueError("Network features must contain a properties object")
         props = feature["properties"]
-        NetworkFeature.model_validate(feature)
+        properties = NetworkFeature.model_validate(feature).properties
         if {
             "expected_ksi",
             "expected_ksi_std",
@@ -119,9 +149,19 @@ def validate_serving_data(
         count = props.get("collision_count")
         if type(ksi) is not int or type(count) is not int or not 0 <= ksi <= count:
             raise ValueError("Network observed counts must be nonnegative integers")
+        _validate_network_exposure(properties, props)
         observed[key] = ksi
+        matched_collisions += count
+        matched_ksi += ksi
     if len(set(keys)) != len(keys):
         raise ValueError("Network identities must be unique")
+    source_ksi = int(frame["collision_severity"].is_in([1, 2]).sum())
+    if matched_collisions > frame.height:
+        raise ValueError("Matched network counts exceed source collisions")
+    if matched_ksi > source_ksi:
+        raise ValueError("Matched network counts exceed source KSI collisions")
+    if matched_collisions - matched_ksi > frame.height - source_ksi:
+        raise ValueError("Matched network counts exceed source non-KSI collisions")
     if retrospective is not None:
         if not {"year", "segment_key", "ksi_count"}.issubset(retrospective.columns):
             raise ValueError("Retrospective artifact is missing identity, year or observed counts")

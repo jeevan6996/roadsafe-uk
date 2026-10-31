@@ -18,6 +18,15 @@ cannot pair cached observations with fingerprints of replacement files. Bundle
 snapshots additionally match the declared artifact hashes. Validation checks
 collision values, network fields/geometry and retrospective record semantics,
 not just counts and checksums. Observed networks cannot carry model fields.
+Matched collision, KSI and non-KSI totals cannot exceed their source counts;
+unmatched and ambiguous source collisions remain explicitly allowed. Each link's
+rate must agree with its count and positive finite AADF/length exposure. The check
+retains the producer's 365-day convention and accepts four-decimal fixture rounding
+(absolute rate tolerance 0.00005 plus one floating-point ULP, relative tolerance
+1e-12). If annual vehicle-km
+is included, it must match those inputs at relative tolerance 1e-12. No rates or
+counts are silently repaired. Bundle building/loading and legacy startup share
+these checks; a recomputed checksum cannot make contradictory values valid.
 The retrospective endpoint projects only its validated EB fields; matching a
 forecast artifact's year and segment keys is not sufficient for acceptance.
 These checks reject incompatible inputs, not independently authenticate a model's

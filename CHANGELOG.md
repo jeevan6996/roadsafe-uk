@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- reject contradictory bundle totals and exposure-normalized rates before building or serving evidence
 - highlight the selected road, dim network context and inspect its severity-filtered matched collisions
 - verify focused collision assignments against every road's observed collision/KSI counts
 - bind browser evidence responses to one frozen data-snapshot identity

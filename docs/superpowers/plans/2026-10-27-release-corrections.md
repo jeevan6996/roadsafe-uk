@@ -17,6 +17,9 @@ review is retained outside the repository in the author's local audit workspace.
 - No commits, pushes or public uploads without specific approval. The author
   approved publishing a reviewed experimental progress milestone on 28 October;
   this does not mean the remaining tasks are complete or authorise deployment.
+  On 31 October the author requested further tested personal-project milestones
+  and pushes; this authorises the reviewed consistency increment, not deployment
+  or model promotion.
 - Preserve existing local work and raw/generated data exclusions.
 - Do not choose uncertainty semantics implicitly. Await the user's latent-versus-predictive choice.
 - Model promotion and historical-source lineage remain separate gates.
@@ -33,7 +36,7 @@ review is retained outside the repository in the author's local audit workspace.
 
 - [x] Ingestion: reproduce null severity and duplicate-Parquet aggregation, fix producer validation, test both formats and existing network behavior.
 - [x] Analytical validation: reproduce invalid EB/readiness success; require finite positive exposure and finite nonnegative integral counts, reject invalid outputs before writing successful artifacts. Include the directly callable exposure baseline and integer export contract; evidence is in the October progress log.
-- [ ] Bundle: reject impossible totals and inconsistent rate/exposure values while preserving explicitly allowed matching exclusions and rounding precision.
+- [x] Bundle: reject impossible totals and inconsistent rate/exposure values while preserving explicitly allowed matching exclusions and rounding precision.
 - [ ] Uncertainty: resolve the user choice, add equation regressions, update the producer/consumer/documentation contract and regenerate into fresh output paths.
 - [ ] UI: clear hidden collision selections; split observed/network request states with retry; use explicit rate/KSI units; add selected-road highlighting and numeric legends with regression coverage.
 - [ ] Dependencies: refresh only affected compatible packages, inspect lockfile, rerun full and production-only audits.

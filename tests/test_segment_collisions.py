@@ -41,6 +41,12 @@ def snapshot(monkeypatch: pytest.MonkeyPatch) -> api.ServingSnapshot:
             collision_count=int(i == 0),
             ksi_count=int(i == 0),
         )
+        props = feature["properties"]
+        props["collision_rate_per_100m_vehicle_km"] = (
+            props["collision_count"]
+            / (props["all_motor_vehicles"] * 365 * props["link_length_km"])
+            * 100_000_000
+        )
         feature["geometry"]["coordinates"] = [
             list(TO_WGS84.transform(x, y)) for y in [429900, 430100]
         ]
@@ -108,6 +114,13 @@ def test_inconsistent_network_fails_closed(
     value: object,
 ) -> None:
     snapshot.network["features"][0]["properties"][field] = value
+    if field == "collision_count":
+        props = snapshot.network["features"][0]["properties"]
+        props["collision_rate_per_100m_vehicle_km"] = (
+            props["collision_count"]
+            / (props["all_motor_vehicles"] * 365 * props["link_length_km"])
+            * 100_000_000
+        )
     result = get("road-1")
     assert result["available"] is False
     assert result["reason"]
@@ -128,10 +141,17 @@ def test_cache_is_snapshot_local(
     assert get("road-0")["available"] is True
     network = copy.deepcopy(snapshot.network)
     network["features"][0]["properties"]["collision_count"] = 2
+    props = network["features"][0]["properties"]
+    props["collision_rate_per_100m_vehicle_km"] = (
+        props["collision_count"]
+        / (props["all_motor_vehicles"] * 365 * props["link_length_km"])
+        * 100_000_000
+    )
     updated = replace(snapshot, network=network, network_sha256=network_hash)
     monkeypatch.setattr(api, "serving_snapshot", lambda: updated)
     result = get("road-0")
     assert result["available"] is False
+    assert "Canonical-geometry assignments" in result["reason"]
     assert result["network_sha256"] == network_hash
 
 

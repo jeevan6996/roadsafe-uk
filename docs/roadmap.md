@@ -60,6 +60,7 @@
 - documented: [recording storyboard and visual acceptance checklist](demo.md)
 - verified locally: Chromium desktop/mobile workflow, evidence download and real screenshots
 - implemented: portable, hash-verified fixture/pilot serving bundles with frozen API snapshots
+- implemented: serving-bundle aggregate collision/KSI/non-KSI bounds and exposure/rate consistency, retaining matching exclusions and rounded fixtures
 - verified locally: selected-state semantics, visible search focus, and keyboard
   investigation/export at desktop and 320-pixel width
 - implemented: reproducible production capture with evidence checks and media hashes;

@@ -299,6 +299,140 @@ def test_rejects_unservable_network(tmp_path: Path, change: str) -> None:
         build_demo_bundle(COLLISIONS, network, tmp_path / "bundle", "fixture")
 
 
+@pytest.mark.parametrize("kind", ["collisions", "ksi", "non_ksi"])
+def test_network_totals_cannot_exceed_source_counts(tmp_path: Path, kind: str) -> None:
+    content = json.loads(NETWORK.read_text())
+    props = content["features"][0]["properties"]
+    count, ksi, message = {
+        "collisions": (100, 0, "source collisions"),
+        "ksi": (4, 4, "source KSI"),
+        "non_ksi": (9, 0, "source non-KSI"),
+    }[kind]
+    props["collision_count"] = count
+    props["ksi_count"] = ksi
+    exposure = props["all_motor_vehicles"] * 365 * props["link_length_km"]
+    props["collision_rate_per_100m_vehicle_km"] = count / exposure * 100_000_000
+    network = tmp_path / "network.geojson"
+    network.write_text(json.dumps(content))
+
+    with pytest.raises(ValueError, match=message):
+        build_demo_bundle(COLLISIONS, network, tmp_path / "bundle", "fixture")
+    assert not (tmp_path / "bundle").exists()
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("collision_rate_per_100m_vehicle_km", 0.0),
+        ("collision_rate_per_100m_vehicle_km", 99.0),
+        ("all_motor_vehicles", 0),
+        ("link_length_km", 1e308),
+        ("annual_vehicle_km", 1.0),
+        ("annual_vehicle_km", None),
+        ("annual_vehicle_km", True),
+        ("annual_vehicle_km", "3162615.5"),
+    ],
+)
+def test_rejects_inconsistent_exposure_and_rates(tmp_path: Path, field: str, value: Any) -> None:
+    content = json.loads(NETWORK.read_text())
+    content["features"][2]["properties"][field] = value
+    network = tmp_path / "network.geojson"
+    network.write_text(json.dumps(content))
+
+    with pytest.raises(ValueError, match="exposure|rate|annual"):
+        build_demo_bundle(COLLISIONS, network, tmp_path / "bundle", "fixture")
+    assert not (tmp_path / "bundle").exists()
+
+
+def test_rejects_nonfinite_rate_from_finite_positive_exposure(tmp_path: Path) -> None:
+    content = json.loads(NETWORK.read_text())
+    props = content["features"][2]["properties"]
+    props.update(all_motor_vehicles=1, link_length_km=5e-324)
+    network = tmp_path / "network.geojson"
+    network.write_text(json.dumps(content))
+
+    with pytest.raises(ValueError, match="rate"):
+        build_demo_bundle(COLLISIONS, network, tmp_path / "bundle", "fixture")
+    assert not (tmp_path / "bundle").exists()
+
+
+@pytest.mark.parametrize("rounded", [False, True])
+def test_allows_unmatched_collisions_and_consistent_rounded_rates(
+    tmp_path: Path, rounded: bool
+) -> None:
+    content = json.loads(NETWORK.read_text())
+    for feature in content["features"]:
+        props = feature["properties"]
+        exposure = props["all_motor_vehicles"] * 365 * props["link_length_km"]
+        rate = props["collision_count"] / exposure * 100_000_000
+        props["annual_vehicle_km"] = exposure
+        props["collision_rate_per_100m_vehicle_km"] = round(rate, 4) if rounded else rate
+    network = tmp_path / "network.geojson"
+    network.write_text(json.dumps(content))
+
+    bundle = build_demo_bundle(COLLISIONS, network, tmp_path / "bundle", "fixture")
+    assert bundle.records == 12
+    assert sum(f["properties"]["collision_count"] for f in content["features"]) == 2
+    assert load_demo_bundle(tmp_path / "bundle") == bundle
+
+
+@pytest.mark.parametrize("rate", [0.0624, 0.0623])
+def test_rounding_boundary_retains_only_valid_rounded_rates(tmp_path: Path, rate: float) -> None:
+    content = json.loads(NETWORK.read_text())
+    props = content["features"][2]["properties"]
+    props.update(all_motor_vehicles=100000, link_length_km=43.870713008763175)
+    expected = 100_000_000 / (100000 * 365 * props["link_length_km"])
+    assert round(expected, 4) == 0.0624
+    props["collision_rate_per_100m_vehicle_km"] = rate
+    network = tmp_path / "network.geojson"
+    network.write_text(json.dumps(content))
+    if rate == round(expected, 4):
+        build_demo_bundle(COLLISIONS, network, tmp_path / "bundle", "fixture")
+        assert load_demo_bundle(tmp_path / "bundle").records == 12
+    else:
+        with pytest.raises(ValueError, match="rate"):
+            build_demo_bundle(COLLISIONS, network, tmp_path / "bundle", "fixture")
+
+
+def test_recomputed_hash_does_not_hide_inconsistent_bundle(tmp_path: Path) -> None:
+    root = tmp_path / "bundle"
+    bundle = build_demo_bundle(COLLISIONS, NETWORK, root, "fixture")
+    network = root / bundle.network.filename
+    content = json.loads(network.read_text())
+    content["features"][2]["properties"]["collision_rate_per_100m_vehicle_km"] = 0.0
+    network.write_text(json.dumps(content))
+    manifest = json.loads((root / "bundle.json").read_text())
+    manifest["network"]["sha256"] = sha256_file(network)
+    (root / "bundle.json").write_text(json.dumps(manifest))
+
+    with pytest.raises(ValueError, match="rate"):
+        load_demo_bundle(root)
+
+
+def test_legacy_api_refuses_contradictory_network_totals(tmp_path: Path) -> None:
+    content = json.loads(NETWORK.read_text())
+    props = content["features"][0]["properties"]
+    props["collision_count"] = 100
+    props["collision_rate_per_100m_vehicle_km"] = (
+        100 / (props["all_motor_vehicles"] * 365 * props["link_length_km"]) * 100_000_000
+    )
+    network = tmp_path / "network.geojson"
+    network.write_text(json.dumps(content))
+    environment = {k: v for k, v in os.environ.items() if not k.startswith("ROADSAFE_")}
+    environment.update(ROADSAFE_DATA_PATH=str(COLLISIONS), ROADSAFE_NETWORK_PATH=str(network))
+
+    result = subprocess.run(
+        [sys.executable, "-c", "from roadsafe.api.app import app"],
+        env=environment,
+        capture_output=True,
+        text=True,
+        timeout=20,
+        check=False,
+    )
+    assert result.returncode != 0
+    assert "source collisions" in result.stderr
+
+
 @pytest.mark.parametrize("first_request", [None, "/api/v1/collisions", "/api/v1/metadata"])
 def test_legacy_snapshot_binds_all_hashes_at_startup(
     tmp_path: Path, first_request: str | None

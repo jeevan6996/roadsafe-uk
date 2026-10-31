@@ -351,3 +351,40 @@ point endpoint withholds inconsistent assignments, but this does not certify
 every other endpoint's analytical consistency. EB uncertainty semantics, partial
 network-error recovery, source-vintage lineage, calibration, external validation,
 public deployment and recording publication also remain open.
+
+## 31 October: internally consistent serving evidence
+
+Completed the bounded aggregate/rate task in the release-corrections plan.
+Bundle construction, verification and legacy API startup now reject matched
+collision, KSI or non-KSI totals exceeding the corresponding source population.
+Valid matching exclusions remain allowed: the 12-record fixture still has only
+two accepted matches. Per-link rates must agree with counts and positive finite
+exposure, including optional annual vehicle-km. The producer's 365-day convention,
+100-million vehicle-km rate scale and four-decimal fixture rounding are retained.
+Contradictions are rejected, never silently corrected or hidden by fresh hashes.
+
+Fourteen regressions failed before the change; two positive controls passed.
+Coverage includes impossible totals, zero/overflowed exposure, finite inputs
+producing a nonfinite rate, wrong or ill-typed annual vehicle-km, inconsistent
+rates, altered artifacts with recomputed hashes, and legacy startup rejection.
+The matching tests' synthetic inputs changed counts but retained copied zero
+rates; their fixture construction now recalculates rates. Their intended spatial
+mismatch/cache assertions remain, including explicit canonical-assignment failure.
+
+Independent review found a valid half-step rounding value that exceeded the
+absolute tolerance by floating-point roundoff. Its new regression failed before
+adding one ULP of boundary allowance; an actually inconsistent neighbouring rate
+remains rejected. This does not broaden the intended four-decimal precision.
+
+All 336 Python tests pass on Python 3.12.15 with current declared dependencies.
+Ruff lint/format and strict mypy across 20 source files pass. Shapely transform
+deprecations and the existing joblib CPU-detection warning remain non-failing.
+The unchanged real serving bundle verifies with 1,791 source collisions and
+256 links, without rewriting its collision/network/retrospective artifacts.
+Remote CI is checked separately after the milestone push.
+
+This is a software evidence-consistency milestone, not a model-quality gain or
+scientific validation. Per-road spatial assignment reconstruction remains a
+separate point-endpoint gate. EB uncertainty semantics, partial API recovery,
+source-vintage lineage, calibration, external validation, deployment and the
+public recording remain open; no new model or training result is claimed.
